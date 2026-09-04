@@ -1,0 +1,104 @@
+# ==============================
+# Java / Spring Boot 通用忽略规则
+# ==============================
+
+# Java 编译产物
+*.class
+*.jar
+*.war
+*.ear
+*.hprof
+hs_err_pid*
+
+# Maven 构建输出和临时文件
+/target/
+**/target/
+pom.xml.versionsBackup
+pom.xml.releaseBackup
+release.properties
+
+# Maven 测试报告和覆盖率报告
+**/surefire-reports/
+**/failsafe-reports/
+**/site/
+**/jacoco/
+*.exec
+
+# Gradle 项目可能产生的构建文件（当前项目使用 Maven，保留通用规则）
+/.gradle/
+**/.gradle/
+**/build/
+
+# ==============================
+# IDE 和本地开发环境文件
+# ==============================
+
+# IntelliJ IDEA
+/.idea/
+*.iml
+*.iws
+*.ipr
+
+# Eclipse / STS
+.classpath
+.project
+.settings/
+*.launch
+.factorypath
+
+# VS Code
+/.vscode/
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/.nb-gradle/
+
+# ==============================
+# 操作系统和临时文件
+# ==============================
+
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+
+# ==============================
+# 日志、缓存和运行时文件
+# ==============================
+
+*.log
+/logs/
+**/logs/
+*.pid
+*.pid.lock
+
+# ==============================
+# 本地环境变量和敏感配置
+# ==============================
+
+.env
+.env.*
+!.env.example
+
+# Spring Boot 本地覆盖配置；共享配置仍可提交
+**/application-local.yml
+**/application-local.yaml
+**/application-local.properties
+**/application-*.local.yml
+**/application-*.local.yaml
+**/application-*.local.properties
+
+# ==============================
+# 项目约定：本地过程资料不提交
+# ==============================
+
+# 明确忽略仓库根目录下的所有 Markdown 文件
+# 只匹配根目录 Markdown，不影响其他目录的 Markdown 文件
+/*.md
+
+# 开发任务资料仅用于本地过程管理，整个目录不提交
+/开发任务/
