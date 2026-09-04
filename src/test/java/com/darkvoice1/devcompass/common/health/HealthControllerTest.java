@@ -26,6 +26,6 @@ class HealthControllerTest {
     void shouldReturnUpStatus() throws Exception {
         mockMvc.perform(get("/api/v1/health"))
                 .andExpect(status().isOk())
-                .andExpect(content().json("{\"status\":\"UP\"}"));
+                .andExpect(content().json("{\"code\":\"0\",\"message\":\"success\",\"data\":{\"status\":\"UP\"}}"));
     }
 }

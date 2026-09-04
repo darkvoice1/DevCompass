@@ -6,6 +6,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.darkvoice1.devcompass.common.web.ApiResponse;
+
 /**
  * 提供应用基础健康检查接口。
  */
@@ -19,7 +21,7 @@ public class HealthController {
      * @return 包含应用状态的响应
      */
     @GetMapping
-    public Map<String, String> health() {
-        return Map.of("status", "UP");
+    public ApiResponse<Map<String, String>> health() {
+        return ApiResponse.success(Map.of("status", "UP"));
     }
 }
