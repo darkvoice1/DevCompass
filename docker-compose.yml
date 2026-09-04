@@ -19,5 +19,20 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    container_name: devcompass-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - devcompass-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   devcompass-postgres-data:
+  devcompass-redis-data:

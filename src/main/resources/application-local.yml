@@ -1,0 +1,12 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/devcompass}
+    username: ${DB_USERNAME:devcompass}
+    password: ${DB_PASSWORD:devcompass}
+    driver-class-name: org.postgresql.Driver
+
+server:
+  port: ${SERVER_PORT:8080}
