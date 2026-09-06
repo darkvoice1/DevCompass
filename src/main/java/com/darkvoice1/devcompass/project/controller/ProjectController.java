@@ -17,7 +17,7 @@ import com.darkvoice1.devcompass.project.dto.UpdateProjectRequest;
 import com.darkvoice1.devcompass.project.service.ProjectService;
 
 /**
- * 提供项目创建和详情查询接口。
+ * 提供项目创建、查询、编辑、归档和恢复接口。
  */
 @RestController
 @RequestMapping("/api/v1/projects")
@@ -63,5 +63,27 @@ public class ProjectController {
     public ApiResponse<ProjectDetailResponse> updateProject(
             @PathVariable Long projectId, @Valid @RequestBody UpdateProjectRequest request) {
         return ApiResponse.success(projectService.updateProject(projectId, request));
+    }
+
+    /**
+     * 归档项目。
+     *
+     * @param projectId 项目主键
+     * @return 归档后的项目详情
+     */
+    @PostMapping("/{projectId}/archive")
+    public ApiResponse<ProjectDetailResponse> archiveProject(@PathVariable Long projectId) {
+        return ApiResponse.success(projectService.archiveProject(projectId));
+    }
+
+    /**
+     * 恢复已归档项目。
+     *
+     * @param projectId 项目主键
+     * @return 恢复后的项目详情
+     */
+    @PostMapping("/{projectId}/restore")
+    public ApiResponse<ProjectDetailResponse> restoreProject(@PathVariable Long projectId) {
+        return ApiResponse.success(projectService.restoreProject(projectId));
     }
 }

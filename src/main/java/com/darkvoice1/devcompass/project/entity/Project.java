@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
@@ -28,6 +30,7 @@ public class Project {
 
     private boolean archived;
 
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private Instant archivedAt;
 
     private Instant createdAt;

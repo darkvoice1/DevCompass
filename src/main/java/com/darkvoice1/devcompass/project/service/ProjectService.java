@@ -14,7 +14,7 @@ import com.darkvoice1.devcompass.project.entity.ProjectStatus;
 import com.darkvoice1.devcompass.project.repository.ProjectMapper;
 
 /**
- * 处理项目创建和查询业务。
+ * 处理项目创建、查询、编辑、归档和恢复业务。
  */
 @Service
 public class ProjectService {
@@ -51,11 +51,7 @@ public class ProjectService {
      * @throws BusinessException 项目不存在时抛出
      */
     public ProjectDetailResponse getProjectDetail(Long projectId) {
-        Project project = projectMapper.selectById(projectId);
-        if (project == null) {
-            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "项目不存在");
-        }
-        return toResponse(project);
+        return toResponse(findProjectOrThrow(projectId));
     }
 
     /**
@@ -67,10 +63,7 @@ public class ProjectService {
      * @throws BusinessException 项目不存在时抛出
      */
     public ProjectDetailResponse updateProject(Long projectId, UpdateProjectRequest request) {
-        Project project = projectMapper.selectById(projectId);
-        if (project == null) {
-            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "项目不存在");
-        }
+        Project project = findProjectOrThrow(projectId);
 
         project.setName(request.getName());
         if (request.getDescription() != null) {
@@ -89,6 +82,62 @@ public class ProjectService {
 
         projectMapper.updateById(project);
         return getProjectDetail(projectId);
+    }
+
+    /**
+     * 归档项目并记录归档时间。
+     *
+     * @param projectId 项目主键
+     * @return 归档后的项目详情
+     * @throws BusinessException 项目不存在或已经归档时抛出
+     */
+    public ProjectDetailResponse archiveProject(Long projectId) {
+        Project project = findProjectOrThrow(projectId);
+        if (project.isArchived()) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "项目已经归档，不能重复归档");
+        }
+
+        Instant now = Instant.now();
+        project.setArchived(true);
+        project.setArchivedAt(now);
+        project.setUpdatedAt(now);
+        projectMapper.updateById(project);
+        return getProjectDetail(projectId);
+    }
+
+    /**
+     * 恢复已归档项目并清空归档时间。
+     *
+     * @param projectId 项目主键
+     * @return 恢复后的项目详情
+     * @throws BusinessException 项目不存在或尚未归档时抛出
+     */
+    public ProjectDetailResponse restoreProject(Long projectId) {
+        Project project = findProjectOrThrow(projectId);
+        if (!project.isArchived()) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "项目尚未归档，不能恢复");
+        }
+
+        project.setArchived(false);
+        project.setArchivedAt(null);
+        project.setUpdatedAt(Instant.now());
+        projectMapper.updateById(project);
+        return getProjectDetail(projectId);
+    }
+
+    /**
+     * 查询项目，不存在时统一抛出业务异常。
+     *
+     * @param projectId 项目主键
+     * @return 项目实体
+     * @throws BusinessException 项目不存在时抛出
+     */
+    private Project findProjectOrThrow(Long projectId) {
+        Project project = projectMapper.selectById(projectId);
+        if (project == null) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "项目不存在");
+        }
+        return project;
     }
 
     /**

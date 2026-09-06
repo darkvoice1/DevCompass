@@ -7,6 +7,8 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -111,5 +113,72 @@ class ProjectServiceTest {
         assertThatThrownBy(() -> projectService.updateProject(99L, request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("项目不存在");
+    }
+
+    /**
+     * 验证未归档项目可以归档并记录归档时间。
+     */
+    @Test
+    void shouldArchiveProject() {
+        Project stored = new Project();
+        stored.setId(1L);
+        stored.setName("研发罗盘");
+        stored.setArchived(false);
+        when(projectMapper.selectById(1L)).thenReturn(stored);
+
+        ProjectDetailResponse response = projectService.archiveProject(1L);
+
+        assertThat(response.isArchived()).isTrue();
+        assertThat(response.getArchivedAt()).isNotNull();
+        assertThat(response.getUpdatedAt()).isNotNull();
+    }
+
+    /**
+     * 验证已归档项目可以恢复并清空归档时间。
+     */
+    @Test
+    void shouldRestoreProject() {
+        Project stored = new Project();
+        stored.setId(1L);
+        stored.setName("研发罗盘");
+        stored.setArchived(true);
+        stored.setArchivedAt(Instant.now());
+        when(projectMapper.selectById(1L)).thenReturn(stored);
+
+        ProjectDetailResponse response = projectService.restoreProject(1L);
+
+        assertThat(response.isArchived()).isFalse();
+        assertThat(response.getArchivedAt()).isNull();
+        assertThat(response.getUpdatedAt()).isNotNull();
+    }
+
+    /**
+     * 验证重复归档会被拒绝。
+     */
+    @Test
+    void shouldRejectArchivingAlreadyArchivedProject() {
+        Project stored = new Project();
+        stored.setId(1L);
+        stored.setArchived(true);
+        when(projectMapper.selectById(1L)).thenReturn(stored);
+
+        assertThatThrownBy(() -> projectService.archiveProject(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("项目已经归档，不能重复归档");
+    }
+
+    /**
+     * 验证恢复未归档项目会被拒绝。
+     */
+    @Test
+    void shouldRejectRestoringActiveProject() {
+        Project stored = new Project();
+        stored.setId(1L);
+        stored.setArchived(false);
+        when(projectMapper.selectById(1L)).thenReturn(stored);
+
+        assertThatThrownBy(() -> projectService.restoreProject(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("项目尚未归档，不能恢复");
     }
 }

@@ -157,6 +157,34 @@ class ProjectControllerTest {
     }
 
     /**
+     * 验证归档接口返回归档后的项目详情。
+     */
+    @Test
+    void shouldArchiveProject() throws Exception {
+        ProjectDetailResponse response = projectResponse();
+        response.setArchived(true);
+        when(projectService.archiveProject(1L)).thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/projects/1/archive"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("0"))
+                .andExpect(jsonPath("$.data.archived").value(true));
+    }
+
+    /**
+     * 验证恢复接口返回恢复后的项目详情。
+     */
+    @Test
+    void shouldRestoreProject() throws Exception {
+        when(projectService.restoreProject(1L)).thenReturn(projectResponse());
+
+        mockMvc.perform(post("/api/v1/projects/1/restore"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("0"))
+                .andExpect(jsonPath("$.data.archived").value(false));
+    }
+
+    /**
      * 创建测试用项目详情响应。
      */
     private ProjectDetailResponse projectResponse() {
