@@ -1,11 +1,14 @@
 package com.darkvoice1.devcompass.project.service;
 
+import java.time.Instant;
+
 import org.springframework.stereotype.Service;
 
 import com.darkvoice1.devcompass.common.exception.BusinessException;
 import com.darkvoice1.devcompass.common.exception.ErrorCode;
 import com.darkvoice1.devcompass.project.dto.CreateProjectRequest;
 import com.darkvoice1.devcompass.project.dto.ProjectDetailResponse;
+import com.darkvoice1.devcompass.project.dto.UpdateProjectRequest;
 import com.darkvoice1.devcompass.project.entity.Project;
 import com.darkvoice1.devcompass.project.entity.ProjectStatus;
 import com.darkvoice1.devcompass.project.repository.ProjectMapper;
@@ -53,6 +56,39 @@ public class ProjectService {
             throw new BusinessException(ErrorCode.BUSINESS_ERROR, "项目不存在");
         }
         return toResponse(project);
+    }
+
+    /**
+     * 更新项目可编辑字段并返回最新详情。
+     *
+     * @param projectId 项目主键
+     * @param request 编辑项目的请求参数
+     * @return 更新后的项目详情
+     * @throws BusinessException 项目不存在时抛出
+     */
+    public ProjectDetailResponse updateProject(Long projectId, UpdateProjectRequest request) {
+        Project project = projectMapper.selectById(projectId);
+        if (project == null) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "项目不存在");
+        }
+
+        project.setName(request.getName());
+        if (request.getDescription() != null) {
+            project.setDescription(request.getDescription());
+        }
+        if (request.getStatus() != null) {
+            project.setStatus(request.getStatus());
+        }
+        if (request.getTargetDate() != null) {
+            project.setTargetDate(request.getTargetDate());
+        }
+        if (request.getTechStack() != null) {
+            project.setTechStack(request.getTechStack());
+        }
+        project.setUpdatedAt(Instant.now());
+
+        projectMapper.updateById(project);
+        return getProjectDetail(projectId);
     }
 
     /**

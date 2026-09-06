@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.darkvoice1.devcompass.common.web.ApiResponse;
 import com.darkvoice1.devcompass.project.dto.CreateProjectRequest;
 import com.darkvoice1.devcompass.project.dto.ProjectDetailResponse;
+import com.darkvoice1.devcompass.project.dto.UpdateProjectRequest;
 import com.darkvoice1.devcompass.project.service.ProjectService;
 
 /**
@@ -48,5 +50,18 @@ public class ProjectController {
     @GetMapping("/{projectId}")
     public ApiResponse<ProjectDetailResponse> getProjectDetail(@PathVariable Long projectId) {
         return ApiResponse.success(projectService.getProjectDetail(projectId));
+    }
+
+    /**
+     * 更新项目可编辑字段。
+     *
+     * @param projectId 项目主键
+     * @param request 编辑项目请求
+     * @return 更新后的项目详情
+     */
+    @PutMapping("/{projectId}")
+    public ApiResponse<ProjectDetailResponse> updateProject(
+            @PathVariable Long projectId, @Valid @RequestBody UpdateProjectRequest request) {
+        return ApiResponse.success(projectService.updateProject(projectId, request));
     }
 }

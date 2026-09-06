@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import com.darkvoice1.devcompass.common.exception.BusinessException;
 import com.darkvoice1.devcompass.project.dto.CreateProjectRequest;
 import com.darkvoice1.devcompass.project.dto.ProjectDetailResponse;
+import com.darkvoice1.devcompass.project.dto.UpdateProjectRequest;
 import com.darkvoice1.devcompass.project.entity.Project;
 import com.darkvoice1.devcompass.project.entity.ProjectStatus;
 import com.darkvoice1.devcompass.project.repository.ProjectMapper;
@@ -68,6 +69,46 @@ class ProjectServiceTest {
         when(projectMapper.selectById(99L)).thenReturn(null);
 
         assertThatThrownBy(() -> projectService.getProjectDetail(99L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("项目不存在");
+    }
+
+    /**
+     * 验证编辑项目时更新名称、描述和状态。
+     */
+    @Test
+    void shouldUpdateEditableProjectFields() {
+        Project stored = new Project();
+        stored.setId(1L);
+        stored.setName("旧项目名称");
+        stored.setDescription("旧项目描述");
+        stored.setStatus(ProjectStatus.PLANNED);
+        when(projectMapper.selectById(1L)).thenReturn(stored);
+
+        UpdateProjectRequest request = new UpdateProjectRequest();
+        request.setName("新项目名称");
+        request.setDescription("新项目描述");
+        request.setStatus(ProjectStatus.COMPLETED);
+
+        ProjectDetailResponse response = projectService.updateProject(1L, request);
+
+        assertThat(response.getName()).isEqualTo("新项目名称");
+        assertThat(response.getDescription()).isEqualTo("新项目描述");
+        assertThat(response.getStatus()).isEqualTo(ProjectStatus.COMPLETED);
+        assertThat(response.getUpdatedAt()).isNotNull();
+    }
+
+    /**
+     * 验证编辑不存在的项目时抛出业务异常。
+     */
+    @Test
+    void shouldThrowBusinessExceptionWhenUpdatingMissingProject() {
+        when(projectMapper.selectById(99L)).thenReturn(null);
+
+        UpdateProjectRequest request = new UpdateProjectRequest();
+        request.setName("新项目名称");
+
+        assertThatThrownBy(() -> projectService.updateProject(99L, request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("项目不存在");
     }

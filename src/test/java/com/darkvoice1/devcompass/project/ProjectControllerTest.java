@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -112,6 +113,47 @@ class ProjectControllerTest {
                 .andExpect(jsonPath("$.code").value("0"))
                 .andExpect(jsonPath("$.data.id").value(1))
                 .andExpect(jsonPath("$.data.targetDate").value("2026-12-31"));
+    }
+
+    /**
+     * 验证合法编辑请求返回更新后的项目详情。
+     */
+    @Test
+    void shouldUpdateProject() throws Exception {
+        ProjectDetailResponse response = projectResponse();
+        response.setName("更新后的研发罗盘");
+        response.setStatus(ProjectStatus.COMPLETED);
+        when(projectService.updateProject(any(), any())).thenReturn(response);
+
+        mockMvc.perform(put("/api/v1/projects/1")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "name": "更新后的研发罗盘",
+                                  "description": "更新后的项目描述",
+                                  "status": "COMPLETED",
+                                  "targetDate": "2027-01-31",
+                                  "techStack": "Java,Spring Boot,PostgreSQL"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("0"))
+                .andExpect(jsonPath("$.data.id").value(1))
+                .andExpect(jsonPath("$.data.name").value("更新后的研发罗盘"))
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"));
+    }
+
+    /**
+     * 验证编辑请求缺少项目名称时返回校验错误。
+     */
+    @Test
+    void shouldRejectUpdateWithoutProjectName() throws Exception {
+        mockMvc.perform(put("/api/v1/projects/1")
+                        .contentType("application/json")
+                        .content("{\"status\":\"COMPLETED\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.data.name").value("项目名称不能为空"));
     }
 
     /**
