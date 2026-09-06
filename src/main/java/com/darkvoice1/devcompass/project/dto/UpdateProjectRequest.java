@@ -26,6 +26,9 @@ public class UpdateProjectRequest {
     @Size(max = 500, message = "技术栈长度不能超过500个字符")
     private String techStack;
 
+    @Size(max = 500, message = "项目标签长度不能超过500个字符")
+    private String tags;
+
     public String getName() {
         return name;
     }
@@ -64,5 +67,13 @@ public class UpdateProjectRequest {
 
     public void setTechStack(String techStack) {
         this.techStack = techStack;
+    }
+
+    public String getTags() {
+        return tags;
+    }
+
+    public void setTags(String tags) {
+        this.tags = tags;
     }
 }

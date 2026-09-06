@@ -62,14 +62,16 @@ class ProjectControllerTest {
                                   "description": "个人研发管理平台",
                                   "status": "IN_PROGRESS",
                                   "targetDate": "2026-12-31",
-                                  "techStack": "Java,Spring Boot"
+                                  "techStack": "Java,Spring Boot",
+                                  "tags": "后端,学习项目"
                                 }
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("0"))
                 .andExpect(jsonPath("$.data.id").value(1))
                 .andExpect(jsonPath("$.data.name").value("研发罗盘"))
-                .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"));
+                .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"))
+                .andExpect(jsonPath("$.data.tags").value("后端,学习项目"));
     }
 
     /**
@@ -133,14 +135,16 @@ class ProjectControllerTest {
                                   "description": "更新后的项目描述",
                                   "status": "COMPLETED",
                                   "targetDate": "2027-01-31",
-                                  "techStack": "Java,Spring Boot,PostgreSQL"
+                                  "techStack": "Java,Spring Boot,PostgreSQL",
+                                  "tags": "后端,学习项目"
                                 }
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("0"))
                 .andExpect(jsonPath("$.data.id").value(1))
                 .andExpect(jsonPath("$.data.name").value("更新后的研发罗盘"))
-                .andExpect(jsonPath("$.data.status").value("COMPLETED"));
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.tags").value("后端,学习项目"));
     }
 
     /**
@@ -195,6 +199,7 @@ class ProjectControllerTest {
         response.setStatus(ProjectStatus.IN_PROGRESS);
         response.setTargetDate(LocalDate.of(2026, 12, 31));
         response.setTechStack("Java,Spring Boot");
+        response.setTags("后端,学习项目");
         return response;
     }
 }

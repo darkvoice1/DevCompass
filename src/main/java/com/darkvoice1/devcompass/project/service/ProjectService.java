@@ -38,6 +38,7 @@ public class ProjectService {
         project.setStatus(request.getStatus() == null ? ProjectStatus.PLANNED : request.getStatus());
         project.setTargetDate(request.getTargetDate());
         project.setTechStack(request.getTechStack());
+        project.setTags(request.getTags());
 
         projectMapper.insert(project);
         return getProjectDetail(project.getId());
@@ -77,6 +78,9 @@ public class ProjectService {
         }
         if (request.getTechStack() != null) {
             project.setTechStack(request.getTechStack());
+        }
+        if (request.getTags() != null) {
+            project.setTags(request.getTags());
         }
         project.setUpdatedAt(Instant.now());
 
@@ -154,6 +158,7 @@ public class ProjectService {
         response.setStatus(project.getStatus());
         response.setTargetDate(project.getTargetDate());
         response.setTechStack(project.getTechStack());
+        response.setTags(project.getTags());
         response.setArchived(project.isArchived());
         response.setArchivedAt(project.getArchivedAt());
         response.setCreatedAt(project.getCreatedAt());

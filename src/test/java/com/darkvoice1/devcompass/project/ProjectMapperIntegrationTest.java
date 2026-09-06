@@ -54,6 +54,7 @@ class ProjectMapperIntegrationTest {
         project.setStatus(ProjectStatus.IN_PROGRESS);
         project.setTargetDate(LocalDate.of(2026, 12, 31));
         project.setTechStack("Java,Spring Boot");
+        project.setTags("后端,学习项目");
 
         projectMapper.insert(project);
 
@@ -63,6 +64,7 @@ class ProjectMapperIntegrationTest {
         assertThat(stored.getStatus()).isEqualTo(ProjectStatus.IN_PROGRESS);
         assertThat(stored.getTargetDate()).isEqualTo(LocalDate.of(2026, 12, 31));
         assertThat(stored.getTechStack()).isEqualTo("Java,Spring Boot");
+        assertThat(stored.getTags()).isEqualTo("后端,学习项目");
         assertThat(stored.isArchived()).isFalse();
         assertThat(stored.getCreatedAt()).isNotNull();
         assertThat(stored.getUpdatedAt()).isNotNull();

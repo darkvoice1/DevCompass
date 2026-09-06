@@ -22,6 +22,8 @@ public class ProjectDetailResponse {
 
     private String techStack;
 
+    private String tags;
+
     private boolean archived;
 
     private Instant archivedAt;
@@ -76,6 +78,14 @@ public class ProjectDetailResponse {
 
     public void setTechStack(String techStack) {
         this.techStack = techStack;
+    }
+
+    public String getTags() {
+        return tags;
+    }
+
+    public void setTags(String tags) {
+        this.tags = tags;
     }
 
     public boolean isArchived() {

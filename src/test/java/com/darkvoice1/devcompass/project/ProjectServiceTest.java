@@ -57,6 +57,7 @@ class ProjectServiceTest {
 
         CreateProjectRequest request = new CreateProjectRequest();
         request.setName("研发罗盘");
+        request.setTags("后端,学习项目");
 
         ProjectDetailResponse response = projectService.createProject(request);
 
@@ -91,12 +92,14 @@ class ProjectServiceTest {
         request.setName("新项目名称");
         request.setDescription("新项目描述");
         request.setStatus(ProjectStatus.COMPLETED);
+        request.setTags("后端,学习项目");
 
         ProjectDetailResponse response = projectService.updateProject(1L, request);
 
         assertThat(response.getName()).isEqualTo("新项目名称");
         assertThat(response.getDescription()).isEqualTo("新项目描述");
         assertThat(response.getStatus()).isEqualTo(ProjectStatus.COMPLETED);
+        assertThat(response.getTags()).isEqualTo("后端,学习项目");
         assertThat(response.getUpdatedAt()).isNotNull();
     }
 

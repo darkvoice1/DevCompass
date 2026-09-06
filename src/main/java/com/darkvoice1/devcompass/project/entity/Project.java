@@ -28,6 +28,8 @@ public class Project {
 
     private String techStack;
 
+    private String tags;
+
     private boolean archived;
 
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
@@ -83,6 +85,14 @@ public class Project {
 
     public void setTechStack(String techStack) {
         this.techStack = techStack;
+    }
+
+    public String getTags() {
+        return tags;
+    }
+
+    public void setTags(String tags) {
+        this.tags = tags;
     }
 
     public boolean isArchived() {
