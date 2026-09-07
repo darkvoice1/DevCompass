@@ -25,6 +25,11 @@ public class ProjectController {
 
     private final ProjectService projectService;
 
+    /**
+     * 创建项目控制器。
+     *
+     * @param projectService 项目业务服务
+     */
     public ProjectController(ProjectService projectService) {
         this.projectService = projectService;
     }

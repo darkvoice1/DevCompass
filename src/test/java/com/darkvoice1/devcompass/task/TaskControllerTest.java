@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -84,6 +85,27 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.data.id").value(10));
     }
 
+    /**
+     * 验证任务查询接口支持筛选参数。
+     */
+    @Test
+    void shouldQueryTasks() throws Exception {
+        when(taskService.queryTasks(any(), any(), any(), any())).thenReturn(java.util.List.of(taskResponse()));
+
+        mockMvc.perform(get("/api/v1/tasks")
+                        .param("projectId", "1")
+                        .param("status", "TODO")
+                        .param("priority", "HIGH")
+                        .param("keyword", "接口"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].id").value(10));
+    }
+
+    /**
+     * 创建测试用任务详情响应。
+     *
+     * @return 测试用任务详情响应
+     */
     private TaskDetailResponse taskResponse() {
         TaskDetailResponse response = new TaskDetailResponse();
         response.setId(10L);

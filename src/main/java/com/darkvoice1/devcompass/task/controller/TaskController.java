@@ -1,18 +1,24 @@
 package com.darkvoice1.devcompass.task.controller;
 
+import java.util.List;
+
 import jakarta.validation.Valid;
 
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.darkvoice1.devcompass.common.web.ApiResponse;
 import com.darkvoice1.devcompass.task.dto.CreateTaskRequest;
 import com.darkvoice1.devcompass.task.dto.TaskDetailResponse;
 import com.darkvoice1.devcompass.task.dto.UpdateTaskRequest;
+import com.darkvoice1.devcompass.task.entity.TaskPriority;
+import com.darkvoice1.devcompass.task.entity.TaskStatus;
 import com.darkvoice1.devcompass.task.service.TaskService;
 
 /**
@@ -24,6 +30,11 @@ public class TaskController {
 
     private final TaskService taskService;
 
+    /**
+     * 创建任务控制器。
+     *
+     * @param taskService 任务业务服务
+     */
     public TaskController(TaskService taskService) {
         this.taskService = taskService;
     }
@@ -50,6 +61,24 @@ public class TaskController {
     public ApiResponse<TaskDetailResponse> updateTask(
             @PathVariable Long taskId, @Valid @RequestBody UpdateTaskRequest request) {
         return ApiResponse.success(taskService.updateTask(taskId, request));
+    }
+
+    /**
+     * 按项目和可选条件查询任务。
+     *
+     * @param projectId 项目主键
+     * @param status 任务状态，可为空
+     * @param priority 任务优先级，可为空
+     * @param keyword 任务标题关键字，可为空
+     * @return 任务详情列表
+     */
+    @GetMapping
+    public ApiResponse<List<TaskDetailResponse>> queryTasks(
+            @RequestParam(name = "projectId") Long projectId,
+            @RequestParam(name = "status", required = false) TaskStatus status,
+            @RequestParam(name = "priority", required = false) TaskPriority priority,
+            @RequestParam(name = "keyword", required = false) String keyword) {
+        return ApiResponse.success(taskService.queryTasks(projectId, status, priority, keyword));
     }
 
 }

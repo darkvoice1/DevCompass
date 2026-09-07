@@ -21,6 +21,11 @@ public class ProjectService {
 
     private final ProjectMapper projectMapper;
 
+    /**
+     * 创建项目服务。
+     *
+     * @param projectMapper 项目数据访问对象
+     */
     public ProjectService(ProjectMapper projectMapper) {
         this.projectMapper = projectMapper;
     }

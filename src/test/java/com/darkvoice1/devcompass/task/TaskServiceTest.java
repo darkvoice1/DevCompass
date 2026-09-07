@@ -7,6 +7,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -82,6 +84,26 @@ class TaskServiceTest {
         assertThat(response.getStatus()).isEqualTo(TaskStatus.COMPLETED);
         assertThat(response.getUpdatedAt()).isNotNull();
         verify(taskMapper).updateById(task);
+    }
+
+    /**
+     * 验证可以按项目、状态、优先级和标题关键字查询任务。
+     */
+    @Test
+    void shouldQueryTasksByConditions() {
+        when(projectMapper.selectById(1L)).thenReturn(new Project());
+        Task task = new Task();
+        task.setId(10L);
+        task.setProjectId(1L);
+        task.setTitle("实现任务查询");
+        task.setStatus(TaskStatus.TODO);
+        task.setPriority(TaskPriority.HIGH);
+        when(taskMapper.selectList(any())).thenReturn(List.of(task));
+
+        var responses = taskService.queryTasks(1L, TaskStatus.TODO, TaskPriority.HIGH, "查询");
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.getFirst().getTitle()).isEqualTo("实现任务查询");
     }
 
 }

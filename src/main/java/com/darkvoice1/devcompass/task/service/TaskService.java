@@ -1,6 +1,7 @@
 package com.darkvoice1.devcompass.task.service;
 
 import java.time.Instant;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 
@@ -25,6 +26,12 @@ public class TaskService {
     private final TaskMapper taskMapper;
     private final ProjectMapper projectMapper;
 
+    /**
+     * 创建任务服务。
+     *
+     * @param taskMapper 任务数据访问对象
+     * @param projectMapper 项目数据访问对象
+     */
     public TaskService(TaskMapper taskMapper, ProjectMapper projectMapper) {
         this.taskMapper = taskMapper;
         this.projectMapper = projectMapper;
@@ -70,17 +77,63 @@ public class TaskService {
         return toResponse(task);
     }
 
+    /**
+     * 按项目和可选条件查询任务。
+     *
+     * @param projectId 项目主键
+     * @param status 任务状态，可为空
+     * @param priority 任务优先级，可为空
+     * @param keyword 任务标题关键字，可为空
+     * @return 匹配的任务列表
+     */
+    public List<TaskDetailResponse> queryTasks(Long projectId, TaskStatus status,
+            TaskPriority priority, String keyword) {
+        ensureProjectExists(projectId);
+        var wrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Task>()
+                .eq("project_id", projectId);
+        if (status != null) {
+            wrapper.eq("status", status);
+        }
+        if (priority != null) {
+            wrapper.eq("priority", priority);
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            wrapper.like("title", keyword.trim());
+        }
+        wrapper.orderByAsc("due_date").orderByDesc("updated_at");
+        return taskMapper.selectList(wrapper).stream().map(this::toResponse).toList();
+    }
+
+    /**
+     * 查询任务，不存在时统一抛出业务异常。
+     *
+     * @param taskId 任务主键
+     * @return 任务实体
+     * @throws BusinessException 任务不存在时抛出
+     */
     private Task findTaskOrThrow(Long taskId) {
         Task task = taskMapper.selectById(taskId);
         if (task == null) throw new BusinessException(ErrorCode.BUSINESS_ERROR, "任务不存在");
         return task;
     }
 
+    /**
+     * 校验项目是否存在。
+     *
+     * @param projectId 项目主键
+     * @throws BusinessException 项目不存在时抛出
+     */
     private void ensureProjectExists(Long projectId) {
         Project project = projectMapper.selectById(projectId);
         if (project == null) throw new BusinessException(ErrorCode.BUSINESS_ERROR, "项目不存在");
     }
 
+    /**
+     * 将任务实体转换为接口响应数据。
+     *
+     * @param task 任务实体
+     * @return 任务详情响应
+     */
     private TaskDetailResponse toResponse(Task task) {
         TaskDetailResponse response = new TaskDetailResponse();
         response.setId(task.getId());
