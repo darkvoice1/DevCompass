@@ -53,10 +53,11 @@ class TaskControllerTest {
 
         mockMvc.perform(post("/api/v1/tasks")
                         .contentType("application/json")
-                        .content("{\"projectId\":1,\"title\":\"实现任务接口\"}"))
+                        .content("{\"projectId\":1,\"phaseId\":2,\"title\":\"实现任务接口\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("0"))
-                .andExpect(jsonPath("$.data.title").value("实现任务接口"));
+                .andExpect(jsonPath("$.data.title").value("实现任务接口"))
+                .andExpect(jsonPath("$.data.phaseName").value("开发实现"));
     }
 
     /**
@@ -66,9 +67,21 @@ class TaskControllerTest {
     void shouldRejectBlankTaskTitle() throws Exception {
         mockMvc.perform(post("/api/v1/tasks")
                         .contentType("application/json")
-                        .content("{\"projectId\":1,\"title\":\"\"}"))
+                        .content("{\"projectId\":1,\"phaseId\":2,\"title\":\"\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.data.title").value("任务标题不能为空"));
+    }
+
+    /**
+     * 验证创建任务时必须传入所属阶段。
+     */
+    @Test
+    void shouldRejectTaskWithoutPhase() throws Exception {
+        mockMvc.perform(post("/api/v1/tasks")
+                        .contentType("application/json")
+                        .content("{\"projectId\":1,\"title\":\"实现任务接口\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.data.phaseId").value("任务阶段不能为空"));
     }
 
     /**
@@ -110,6 +123,8 @@ class TaskControllerTest {
         TaskDetailResponse response = new TaskDetailResponse();
         response.setId(10L);
         response.setProjectId(1L);
+        response.setPhaseId(2L);
+        response.setPhaseName("开发实现");
         response.setTitle("实现任务接口");
         response.setStatus(TaskStatus.TODO);
         response.setPriority(TaskPriority.MEDIUM);

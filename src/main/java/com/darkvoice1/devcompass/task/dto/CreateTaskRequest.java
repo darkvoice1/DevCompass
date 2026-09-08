@@ -18,6 +18,9 @@ public class CreateTaskRequest {
     @NotNull(message = "项目不能为空")
     private Long projectId;
 
+    @NotNull(message = "任务阶段不能为空")
+    private Long phaseId;
+
     @NotBlank(message = "任务标题不能为空")
     @Size(max = 200, message = "任务标题长度不能超过200个字符")
     private String title;
@@ -40,6 +43,14 @@ public class CreateTaskRequest {
 
     public void setProjectId(Long projectId) {
         this.projectId = projectId;
+    }
+
+    public Long getPhaseId() {
+        return phaseId;
+    }
+
+    public void setPhaseId(Long phaseId) {
+        this.phaseId = phaseId;
     }
 
     public String getTitle() {

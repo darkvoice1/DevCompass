@@ -8,7 +8,9 @@ import org.springframework.stereotype.Service;
 import com.darkvoice1.devcompass.common.exception.BusinessException;
 import com.darkvoice1.devcompass.common.exception.ErrorCode;
 import com.darkvoice1.devcompass.project.entity.Project;
+import com.darkvoice1.devcompass.project.entity.ProjectPhase;
 import com.darkvoice1.devcompass.project.repository.ProjectMapper;
+import com.darkvoice1.devcompass.project.repository.ProjectPhaseMapper;
 import com.darkvoice1.devcompass.task.dto.CreateTaskRequest;
 import com.darkvoice1.devcompass.task.dto.TaskDetailResponse;
 import com.darkvoice1.devcompass.task.dto.UpdateTaskRequest;
@@ -18,23 +20,27 @@ import com.darkvoice1.devcompass.task.entity.TaskStatus;
 import com.darkvoice1.devcompass.task.repository.TaskMapper;
 
 /**
- * 处理任务创建和编辑业务。
+ * 处理任务创建、编辑和查询业务。
  */
 @Service
 public class TaskService {
 
     private final TaskMapper taskMapper;
     private final ProjectMapper projectMapper;
+    private final ProjectPhaseMapper projectPhaseMapper;
 
     /**
      * 创建任务服务。
      *
      * @param taskMapper 任务数据访问对象
      * @param projectMapper 项目数据访问对象
+     * @param projectPhaseMapper 项目阶段数据访问对象
      */
-    public TaskService(TaskMapper taskMapper, ProjectMapper projectMapper) {
+    public TaskService(TaskMapper taskMapper, ProjectMapper projectMapper,
+            ProjectPhaseMapper projectPhaseMapper) {
         this.taskMapper = taskMapper;
         this.projectMapper = projectMapper;
+        this.projectPhaseMapper = projectPhaseMapper;
     }
 
     /**
@@ -45,8 +51,10 @@ public class TaskService {
      */
     public TaskDetailResponse createTask(CreateTaskRequest request) {
         ensureProjectExists(request.getProjectId());
+        ensurePhaseBelongsToProject(request.getProjectId(), request.getPhaseId());
         Task task = new Task();
         task.setProjectId(request.getProjectId());
+        task.setPhaseId(request.getPhaseId());
         task.setTitle(request.getTitle());
         task.setDescription(request.getDescription());
         task.setStatus(request.getStatus() == null ? TaskStatus.TODO : request.getStatus());
@@ -129,15 +137,35 @@ public class TaskService {
     }
 
     /**
+     * 校验阶段存在且属于当前项目。
+     *
+     * @param projectId 项目主键
+     * @param phaseId 阶段主键
+     * @throws BusinessException 阶段不存在或归属不一致时抛出
+     */
+    private void ensurePhaseBelongsToProject(Long projectId, Long phaseId) {
+        ProjectPhase phase = projectPhaseMapper.selectById(phaseId);
+        if (phase == null) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "项目阶段不存在");
+        }
+        if (!projectId.equals(phase.getProjectId())) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "任务阶段不属于当前项目");
+        }
+    }
+
+    /**
      * 将任务实体转换为接口响应数据。
      *
      * @param task 任务实体
      * @return 任务详情响应
      */
     private TaskDetailResponse toResponse(Task task) {
+        ProjectPhase phase = projectPhaseMapper.selectById(task.getPhaseId());
         TaskDetailResponse response = new TaskDetailResponse();
         response.setId(task.getId());
         response.setProjectId(task.getProjectId());
+        response.setPhaseId(task.getPhaseId());
+        response.setPhaseName(phase == null ? null : phase.getName());
         response.setTitle(task.getTitle());
         response.setDescription(task.getDescription());
         response.setStatus(task.getStatus());

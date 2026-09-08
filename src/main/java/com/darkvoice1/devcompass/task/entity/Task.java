@@ -18,6 +18,8 @@ public class Task {
 
     private Long projectId;
 
+    private Long phaseId;
+
     private String title;
 
     private String description;
@@ -48,6 +50,14 @@ public class Task {
 
     public void setProjectId(Long projectId) {
         this.projectId = projectId;
+    }
+
+    public Long getPhaseId() {
+        return phaseId;
+    }
+
+    public void setPhaseId(Long phaseId) {
+        this.phaseId = phaseId;
     }
 
     public String getTitle() {

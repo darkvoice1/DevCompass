@@ -1,6 +1,7 @@
 package com.darkvoice1.devcompass.task;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -12,8 +13,11 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.darkvoice1.devcompass.common.exception.BusinessException;
 import com.darkvoice1.devcompass.project.entity.Project;
+import com.darkvoice1.devcompass.project.entity.ProjectPhase;
 import com.darkvoice1.devcompass.project.repository.ProjectMapper;
+import com.darkvoice1.devcompass.project.repository.ProjectPhaseMapper;
 import com.darkvoice1.devcompass.task.dto.CreateTaskRequest;
 import com.darkvoice1.devcompass.task.dto.UpdateTaskRequest;
 import com.darkvoice1.devcompass.task.entity.Task;
@@ -29,6 +33,7 @@ class TaskServiceTest {
 
     private TaskMapper taskMapper;
     private ProjectMapper projectMapper;
+    private ProjectPhaseMapper projectPhaseMapper;
     private TaskService taskService;
 
     /**
@@ -38,7 +43,8 @@ class TaskServiceTest {
     void setUp() {
         taskMapper = mock(TaskMapper.class);
         projectMapper = mock(ProjectMapper.class);
-        taskService = new TaskService(taskMapper, projectMapper);
+        projectPhaseMapper = mock(ProjectPhaseMapper.class);
+        taskService = new TaskService(taskMapper, projectMapper, projectPhaseMapper);
     }
 
     /**
@@ -47,6 +53,7 @@ class TaskServiceTest {
     @Test
     void shouldCreateTaskWithDefaultStatusAndPriority() {
         when(projectMapper.selectById(1L)).thenReturn(new Project());
+        when(projectPhaseMapper.selectById(2L)).thenReturn(phase(2L, 1L, "开发实现"));
         doAnswer(invocation -> {
             Task task = invocation.getArgument(0);
             task.setId(10L);
@@ -55,6 +62,7 @@ class TaskServiceTest {
 
         CreateTaskRequest request = new CreateTaskRequest();
         request.setProjectId(1L);
+        request.setPhaseId(2L);
         request.setTitle("实现任务接口");
 
         var response = taskService.createTask(request);
@@ -62,6 +70,8 @@ class TaskServiceTest {
         assertThat(response.getId()).isEqualTo(10L);
         assertThat(response.getStatus()).isEqualTo(TaskStatus.TODO);
         assertThat(response.getPriority()).isEqualTo(TaskPriority.MEDIUM);
+        assertThat(response.getPhaseId()).isEqualTo(2L);
+        assertThat(response.getPhaseName()).isEqualTo("开发实现");
     }
 
     /**
@@ -71,8 +81,11 @@ class TaskServiceTest {
     void shouldUpdateTaskFields() {
         Task task = new Task();
         task.setId(10L);
+        task.setProjectId(1L);
+        task.setPhaseId(2L);
         task.setTitle("旧标题");
         when(taskMapper.selectById(10L)).thenReturn(task);
+        when(projectPhaseMapper.selectById(2L)).thenReturn(phase(2L, 1L, "开发实现"));
 
         UpdateTaskRequest request = new UpdateTaskRequest();
         request.setTitle("新标题");
@@ -95,15 +108,65 @@ class TaskServiceTest {
         Task task = new Task();
         task.setId(10L);
         task.setProjectId(1L);
+        task.setPhaseId(2L);
         task.setTitle("实现任务查询");
         task.setStatus(TaskStatus.TODO);
         task.setPriority(TaskPriority.HIGH);
         when(taskMapper.selectList(any())).thenReturn(List.of(task));
+        when(projectPhaseMapper.selectById(2L)).thenReturn(phase(2L, 1L, "开发实现"));
 
         var responses = taskService.queryTasks(1L, TaskStatus.TODO, TaskPriority.HIGH, "查询");
 
         assertThat(responses).hasSize(1);
         assertThat(responses.getFirst().getTitle()).isEqualTo("实现任务查询");
+        assertThat(responses.getFirst().getPhaseName()).isEqualTo("开发实现");
+    }
+
+    /**
+     * 验证不能将任务创建到其他项目的阶段中。
+     */
+    @Test
+    void shouldRejectPhaseFromAnotherProject() {
+        when(projectMapper.selectById(1L)).thenReturn(new Project());
+        when(projectPhaseMapper.selectById(2L)).thenReturn(phase(2L, 9L, "其他项目阶段"));
+
+        CreateTaskRequest request = new CreateTaskRequest();
+        request.setProjectId(1L);
+        request.setPhaseId(2L);
+        request.setTitle("实现任务接口");
+
+        assertThatThrownBy(() -> taskService.createTask(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("任务阶段不属于当前项目");
+    }
+
+    /**
+     * 验证任务阶段不存在时不能创建任务。
+     */
+    @Test
+    void shouldRejectCreatingTaskWithMissingPhase() {
+        when(projectMapper.selectById(1L)).thenReturn(new Project());
+        when(projectPhaseMapper.selectById(99L)).thenReturn(null);
+
+        CreateTaskRequest request = new CreateTaskRequest();
+        request.setProjectId(1L);
+        request.setPhaseId(99L);
+        request.setTitle("实现任务接口");
+
+        assertThatThrownBy(() -> taskService.createTask(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("项目阶段不存在");
+    }
+
+    /**
+     * 创建用于测试的项目阶段实体。
+     */
+    private ProjectPhase phase(Long id, Long projectId, String name) {
+        ProjectPhase phase = new ProjectPhase();
+        phase.setId(id);
+        phase.setProjectId(projectId);
+        phase.setName(name);
+        return phase;
     }
 
 }

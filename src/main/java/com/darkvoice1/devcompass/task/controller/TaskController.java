@@ -22,7 +22,7 @@ import com.darkvoice1.devcompass.task.entity.TaskStatus;
 import com.darkvoice1.devcompass.task.service.TaskService;
 
 /**
- * 提供任务创建和编辑接口。
+ * 提供任务创建、编辑和查询接口。
  */
 @RestController
 @RequestMapping("/api/v1/tasks")
