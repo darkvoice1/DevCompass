@@ -39,6 +39,12 @@ public class Project {
 
     private Instant updatedAt;
 
+    /**
+     * 记录项目软删除时间，未删除时为空。
+     */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private Instant deletedAt;
+
     public Long getId() {
         return id;
     }
@@ -125,5 +131,13 @@ public class Project {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(Instant deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }

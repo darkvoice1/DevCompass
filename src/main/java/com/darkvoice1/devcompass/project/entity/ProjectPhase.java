@@ -2,6 +2,8 @@ package com.darkvoice1.devcompass.project.entity;
 
 import java.time.Instant;
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -26,6 +28,12 @@ public class ProjectPhase {
     private Instant createdAt;
 
     private Instant updatedAt;
+
+    /**
+     * 记录项目阶段软删除时间，未删除时为空。
+     */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private Instant deletedAt;
 
     public Long getId() {
         return id;
@@ -81,5 +89,13 @@ public class ProjectPhase {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(Instant deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }

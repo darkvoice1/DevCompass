@@ -1,4 +1,4 @@
-package com.darkvoice1.devcompass.project;
+package com.darkvoice1.devcompass.task;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -17,14 +17,16 @@ import com.darkvoice1.devcompass.project.entity.Project;
 import com.darkvoice1.devcompass.project.entity.ProjectPhase;
 import com.darkvoice1.devcompass.project.repository.ProjectMapper;
 import com.darkvoice1.devcompass.project.repository.ProjectPhaseMapper;
+import com.darkvoice1.devcompass.task.entity.Task;
+import com.darkvoice1.devcompass.task.repository.TaskMapper;
 
 /**
- * 验证项目阶段实体、Flyway 迁移和 MyBatis-Plus 的集成。
+ * 验证任务实体的审计字段映射。
  */
 @Testcontainers
 @EnabledIfDockerAvailable
 @SpringBootTest(classes = Application.class)
-class ProjectPhaseMapperIntegrationTest {
+class TaskMapperIntegrationTest {
 
     @Container
     static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17-alpine");
@@ -34,6 +36,9 @@ class ProjectPhaseMapperIntegrationTest {
 
     @Autowired
     private ProjectPhaseMapper projectPhaseMapper;
+
+    @Autowired
+    private TaskMapper taskMapper;
 
     /**
      * 将测试容器连接信息注入 Spring 数据源配置。
@@ -46,27 +51,27 @@ class ProjectPhaseMapperIntegrationTest {
     }
 
     /**
-     * 验证项目阶段可新增并按主键查询。
+     * 验证新建任务的审计字段可以正确映射。
      */
     @Test
-    void shouldInsertAndFindProjectPhase() {
+    void shouldMapTaskAuditFields() {
         Project project = new Project();
         project.setName("研发罗盘");
         projectMapper.insert(project);
 
         ProjectPhase phase = new ProjectPhase();
         phase.setProjectId(project.getId());
-        phase.setName("需求分析");
-        phase.setDescription("梳理项目的核心需求");
-        phase.setSortOrder(1);
+        phase.setName("开发实现");
         projectPhaseMapper.insert(phase);
 
-        ProjectPhase stored = projectPhaseMapper.selectById(phase.getId());
+        Task task = new Task();
+        task.setProjectId(project.getId());
+        task.setPhaseId(phase.getId());
+        task.setTitle("实现任务阶段关联");
+        taskMapper.insert(task);
+
+        Task stored = taskMapper.selectById(task.getId());
         assertThat(stored).isNotNull();
-        assertThat(stored.getProjectId()).isEqualTo(project.getId());
-        assertThat(stored.getName()).isEqualTo("需求分析");
-        assertThat(stored.getDescription()).isEqualTo("梳理项目的核心需求");
-        assertThat(stored.getSortOrder()).isEqualTo(1);
         assertThat(stored.getCreatedAt()).isNotNull();
         assertThat(stored.getUpdatedAt()).isNotNull();
         assertThat(stored.getDeletedAt()).isNull();

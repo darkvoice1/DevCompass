@@ -68,5 +68,6 @@ class ProjectMapperIntegrationTest {
         assertThat(stored.isArchived()).isFalse();
         assertThat(stored.getCreatedAt()).isNotNull();
         assertThat(stored.getUpdatedAt()).isNotNull();
+        assertThat(stored.getDeletedAt()).isNull();
     }
 }
