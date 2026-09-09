@@ -76,4 +76,32 @@ class TaskMapperIntegrationTest {
         assertThat(stored.getUpdatedAt()).isNotNull();
         assertThat(stored.getDeletedAt()).isNull();
     }
+
+    /**
+     * 验证任务软删除后默认查询会过滤记录，恢复后可再次查询。
+     */
+    @Test
+    void shouldSoftDeleteAndRestoreTask() {
+        Project project = new Project();
+        project.setName("研发罗盘");
+        projectMapper.insert(project);
+
+        ProjectPhase phase = new ProjectPhase();
+        phase.setProjectId(project.getId());
+        phase.setName("开发实现");
+        projectPhaseMapper.insert(phase);
+
+        Task task = new Task();
+        task.setProjectId(project.getId());
+        task.setPhaseId(phase.getId());
+        task.setTitle("待删除任务");
+        taskMapper.insert(task);
+
+        assertThat(taskMapper.softDeleteById(task.getId())).isEqualTo(1);
+        assertThat(taskMapper.selectById(task.getId())).isNull();
+        assertThat(taskMapper.selectDeletedById(task.getId())).isNotNull();
+
+        assertThat(taskMapper.restoreById(task.getId())).isEqualTo(1);
+        assertThat(taskMapper.selectById(task.getId())).isNotNull();
+    }
 }

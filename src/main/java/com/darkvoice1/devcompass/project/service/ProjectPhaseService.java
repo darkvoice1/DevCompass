@@ -115,6 +115,42 @@ public class ProjectPhaseService {
     }
 
     /**
+     * 软删除项目阶段。
+     *
+     * @param projectId 项目主键
+     * @param phaseId 阶段主键
+     * @throws BusinessException 项目、阶段不存在或阶段归属不匹配时抛出
+     */
+    public void deleteProjectPhase(Long projectId, Long phaseId) {
+        ensureProjectExists(projectId);
+        findProjectPhaseOrThrow(projectId, phaseId);
+        if (projectPhaseMapper.softDeleteById(phaseId) == 0) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "项目阶段已经删除");
+        }
+    }
+
+    /**
+     * 恢复已软删除项目阶段。
+     *
+     * @param projectId 项目主键
+     * @param phaseId 阶段主键
+     * @throws BusinessException 项目、阶段不存在或阶段归属不匹配时抛出
+     */
+    public void restoreDeletedProjectPhase(Long projectId, Long phaseId) {
+        ensureProjectExists(projectId);
+        ProjectPhase phase = projectPhaseMapper.selectDeletedById(phaseId);
+        if (phase == null) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "项目阶段不存在或未删除");
+        }
+        if (!projectId.equals(phase.getProjectId())) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "项目阶段不属于当前项目");
+        }
+        if (projectPhaseMapper.restoreById(phaseId) == 0) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "项目阶段恢复失败");
+        }
+    }
+
+    /**
      * 查询项目阶段数量，用于确定新阶段的末尾序号。
      */
     private int countProjectPhases(Long projectId) {

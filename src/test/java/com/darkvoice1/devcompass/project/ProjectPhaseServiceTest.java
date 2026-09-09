@@ -156,6 +156,34 @@ class ProjectPhaseServiceTest {
     }
 
     /**
+     * 验证可以软删除当前项目的阶段。
+     */
+    @Test
+    void shouldSoftDeleteProjectPhase() {
+        when(projectMapper.selectById(1L)).thenReturn(project(1L));
+        when(projectPhaseMapper.selectById(2L)).thenReturn(phase(2L, 1L, "开发实现", 0));
+        when(projectPhaseMapper.softDeleteById(2L)).thenReturn(1);
+
+        projectPhaseService.deleteProjectPhase(1L, 2L);
+
+        verify(projectPhaseMapper).softDeleteById(2L);
+    }
+
+    /**
+     * 验证可以恢复当前项目已删除的阶段。
+     */
+    @Test
+    void shouldRestoreDeletedProjectPhase() {
+        when(projectMapper.selectById(1L)).thenReturn(project(1L));
+        when(projectPhaseMapper.selectDeletedById(2L)).thenReturn(phase(2L, 1L, "开发实现", 0));
+        when(projectPhaseMapper.restoreById(2L)).thenReturn(1);
+
+        projectPhaseService.restoreDeletedProjectPhase(1L, 2L);
+
+        verify(projectPhaseMapper).restoreById(2L);
+    }
+
+    /**
      * 创建用于模拟项目存在的项目实体。
      */
     private Project project(Long id) {

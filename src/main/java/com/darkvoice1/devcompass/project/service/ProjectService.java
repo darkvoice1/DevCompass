@@ -135,6 +135,30 @@ public class ProjectService {
     }
 
     /**
+     * 软删除项目，不物理移除数据库记录。
+     *
+     * @param projectId 项目主键
+     * @throws BusinessException 项目不存在或已删除时抛出
+     */
+    public void deleteProject(Long projectId) {
+        if (projectMapper.softDeleteById(projectId) == 0) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "项目不存在或已经删除");
+        }
+    }
+
+    /**
+     * 恢复已软删除项目。
+     *
+     * @param projectId 项目主键
+     * @throws BusinessException 项目不存在或未删除时抛出
+     */
+    public void restoreDeletedProject(Long projectId) {
+        if (projectMapper.restoreById(projectId) == 0) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "项目不存在或未删除");
+        }
+    }
+
+    /**
      * 查询项目，不存在时统一抛出业务异常。
      *
      * @param projectId 项目主键

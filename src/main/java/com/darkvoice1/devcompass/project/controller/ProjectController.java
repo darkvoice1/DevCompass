@@ -3,6 +3,7 @@ package com.darkvoice1.devcompass.project.controller;
 import jakarta.validation.Valid;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -90,5 +91,29 @@ public class ProjectController {
     @PostMapping("/{projectId}/restore")
     public ApiResponse<ProjectDetailResponse> restoreProject(@PathVariable Long projectId) {
         return ApiResponse.success(projectService.restoreProject(projectId));
+    }
+
+    /**
+     * 软删除项目。
+     *
+     * @param projectId 项目主键
+     * @return 空响应
+     */
+    @DeleteMapping("/{projectId}")
+    public ApiResponse<Void> deleteProject(@PathVariable Long projectId) {
+        projectService.deleteProject(projectId);
+        return ApiResponse.success(null);
+    }
+
+    /**
+     * 恢复已软删除项目。
+     *
+     * @param projectId 项目主键
+     * @return 空响应
+     */
+    @PostMapping("/{projectId}/restore-deleted")
+    public ApiResponse<Void> restoreDeletedProject(@PathVariable Long projectId) {
+        projectService.restoreDeletedProject(projectId);
+        return ApiResponse.success(null);
     }
 }

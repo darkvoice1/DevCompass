@@ -5,6 +5,7 @@ import java.util.List;
 import jakarta.validation.Valid;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -79,6 +80,30 @@ public class TaskController {
             @RequestParam(name = "priority", required = false) TaskPriority priority,
             @RequestParam(name = "keyword", required = false) String keyword) {
         return ApiResponse.success(taskService.queryTasks(projectId, status, priority, keyword));
+    }
+
+    /**
+     * 软删除任务。
+     *
+     * @param taskId 任务主键
+     * @return 空响应
+     */
+    @DeleteMapping("/{taskId}")
+    public ApiResponse<Void> deleteTask(@PathVariable Long taskId) {
+        taskService.deleteTask(taskId);
+        return ApiResponse.success(null);
+    }
+
+    /**
+     * 恢复已软删除任务。
+     *
+     * @param taskId 任务主键
+     * @return 空响应
+     */
+    @PostMapping("/{taskId}/restore-deleted")
+    public ApiResponse<Void> restoreDeletedTask(@PathVariable Long taskId) {
+        taskService.restoreDeletedTask(taskId);
+        return ApiResponse.success(null);
     }
 
 }

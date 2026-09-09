@@ -86,6 +86,30 @@ public class TaskService {
     }
 
     /**
+     * 软删除任务，不物理移除数据库记录。
+     *
+     * @param taskId 任务主键
+     * @throws BusinessException 任务不存在或已删除时抛出
+     */
+    public void deleteTask(Long taskId) {
+        if (taskMapper.softDeleteById(taskId) == 0) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "任务不存在或已经删除");
+        }
+    }
+
+    /**
+     * 恢复已软删除任务。
+     *
+     * @param taskId 任务主键
+     * @throws BusinessException 任务不存在或未删除时抛出
+     */
+    public void restoreDeletedTask(Long taskId) {
+        if (taskMapper.restoreById(taskId) == 0) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "任务不存在或未删除");
+        }
+    }
+
+    /**
      * 按项目和可选条件查询任务。
      *
      * @param projectId 项目主键

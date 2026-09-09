@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 /**
@@ -43,6 +44,7 @@ public class Project {
      * 记录项目软删除时间，未删除时为空。
      */
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    @TableLogic(value = "null", delval = "now()")
     private Instant deletedAt;
 
     public Long getId() {

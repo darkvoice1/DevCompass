@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -129,6 +130,26 @@ class ProjectPhaseControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.data.sortOrder").value("排序序号不能小于0"));
+    }
+
+    /**
+     * 验证项目阶段软删除接口。
+     */
+    @Test
+    void shouldDeleteProjectPhase() throws Exception {
+        mockMvc.perform(delete("/api/v1/projects/1/phases/2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("0"));
+    }
+
+    /**
+     * 验证项目阶段恢复软删除接口。
+     */
+    @Test
+    void shouldRestoreDeletedProjectPhase() throws Exception {
+        mockMvc.perform(post("/api/v1/projects/1/phases/2/restore-deleted"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("0"));
     }
 
     /**

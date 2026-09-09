@@ -71,4 +71,26 @@ class ProjectPhaseMapperIntegrationTest {
         assertThat(stored.getUpdatedAt()).isNotNull();
         assertThat(stored.getDeletedAt()).isNull();
     }
+
+    /**
+     * 验证项目阶段软删除后默认查询会过滤记录，恢复后可再次查询。
+     */
+    @Test
+    void shouldSoftDeleteAndRestoreProjectPhase() {
+        Project project = new Project();
+        project.setName("研发罗盘");
+        projectMapper.insert(project);
+
+        ProjectPhase phase = new ProjectPhase();
+        phase.setProjectId(project.getId());
+        phase.setName("待删除阶段");
+        projectPhaseMapper.insert(phase);
+
+        assertThat(projectPhaseMapper.softDeleteById(phase.getId())).isEqualTo(1);
+        assertThat(projectPhaseMapper.selectById(phase.getId())).isNull();
+        assertThat(projectPhaseMapper.selectDeletedById(phase.getId())).isNotNull();
+
+        assertThat(projectPhaseMapper.restoreById(phase.getId())).isEqualTo(1);
+        assertThat(projectPhaseMapper.selectById(phase.getId())).isNotNull();
+    }
 }

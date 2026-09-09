@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -186,6 +187,26 @@ class ProjectControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("0"))
                 .andExpect(jsonPath("$.data.archived").value(false));
+    }
+
+    /**
+     * 验证项目软删除接口。
+     */
+    @Test
+    void shouldDeleteProject() throws Exception {
+        mockMvc.perform(delete("/api/v1/projects/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("0"));
+    }
+
+    /**
+     * 验证项目恢复软删除接口。
+     */
+    @Test
+    void shouldRestoreDeletedProject() throws Exception {
+        mockMvc.perform(post("/api/v1/projects/1/restore-deleted"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("0"));
     }
 
     /**

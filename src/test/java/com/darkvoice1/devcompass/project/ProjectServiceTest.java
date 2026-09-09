@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
@@ -183,5 +184,41 @@ class ProjectServiceTest {
         assertThatThrownBy(() -> projectService.restoreProject(1L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("项目尚未归档，不能恢复");
+    }
+
+    /**
+     * 验证可以软删除项目。
+     */
+    @Test
+    void shouldSoftDeleteProject() {
+        when(projectMapper.softDeleteById(1L)).thenReturn(1);
+
+        projectService.deleteProject(1L);
+
+        verify(projectMapper).softDeleteById(1L);
+    }
+
+    /**
+     * 验证软删除项目可以恢复。
+     */
+    @Test
+    void shouldRestoreDeletedProject() {
+        when(projectMapper.restoreById(1L)).thenReturn(1);
+
+        projectService.restoreDeletedProject(1L);
+
+        verify(projectMapper).restoreById(1L);
+    }
+
+    /**
+     * 验证重复删除项目会被拒绝。
+     */
+    @Test
+    void shouldRejectDeletingMissingOrDeletedProject() {
+        when(projectMapper.softDeleteById(1L)).thenReturn(0);
+
+        assertThatThrownBy(() -> projectService.deleteProject(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("项目不存在或已经删除");
     }
 }

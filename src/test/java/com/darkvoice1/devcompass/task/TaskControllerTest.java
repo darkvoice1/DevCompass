@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -112,6 +113,26 @@ class TaskControllerTest {
                         .param("keyword", "接口"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].id").value(10));
+    }
+
+    /**
+     * 验证任务软删除接口。
+     */
+    @Test
+    void shouldDeleteTask() throws Exception {
+        mockMvc.perform(delete("/api/v1/tasks/10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("0"));
+    }
+
+    /**
+     * 验证任务恢复软删除接口。
+     */
+    @Test
+    void shouldRestoreDeletedTask() throws Exception {
+        mockMvc.perform(post("/api/v1/tasks/10/restore-deleted"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("0"));
     }
 
     /**

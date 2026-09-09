@@ -70,4 +70,24 @@ class ProjectMapperIntegrationTest {
         assertThat(stored.getUpdatedAt()).isNotNull();
         assertThat(stored.getDeletedAt()).isNull();
     }
+
+    /**
+     * 验证项目软删除后默认查询会过滤记录，恢复后可再次查询。
+     */
+    @Test
+    void shouldSoftDeleteAndRestoreProject() {
+        Project project = new Project();
+        project.setName("待删除项目");
+        projectMapper.insert(project);
+
+        assertThat(projectMapper.softDeleteById(project.getId())).isEqualTo(1);
+        assertThat(projectMapper.selectById(project.getId())).isNull();
+
+        Project deleted = projectMapper.selectDeletedById(project.getId());
+        assertThat(deleted).isNotNull();
+        assertThat(deleted.getDeletedAt()).isNotNull();
+
+        assertThat(projectMapper.restoreById(project.getId())).isEqualTo(1);
+        assertThat(projectMapper.selectById(project.getId())).isNotNull();
+    }
 }

@@ -5,6 +5,7 @@ import java.util.List;
 import jakarta.validation.Valid;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -73,5 +74,33 @@ public class ProjectPhaseController {
             @Valid @RequestBody UpdateProjectPhaseSortOrderRequest request) {
         return ApiResponse.success(
                 projectPhaseService.updateProjectPhaseSortOrder(projectId, phaseId, request));
+    }
+
+    /**
+     * 软删除项目阶段。
+     *
+     * @param projectId 项目主键
+     * @param phaseId 阶段主键
+     * @return 空响应
+     */
+    @DeleteMapping("/{phaseId}")
+    public ApiResponse<Void> deleteProjectPhase(
+            @PathVariable Long projectId, @PathVariable Long phaseId) {
+        projectPhaseService.deleteProjectPhase(projectId, phaseId);
+        return ApiResponse.success(null);
+    }
+
+    /**
+     * 恢复已软删除项目阶段。
+     *
+     * @param projectId 项目主键
+     * @param phaseId 阶段主键
+     * @return 空响应
+     */
+    @PostMapping("/{phaseId}/restore-deleted")
+    public ApiResponse<Void> restoreDeletedProjectPhase(
+            @PathVariable Long projectId, @PathVariable Long phaseId) {
+        projectPhaseService.restoreDeletedProjectPhase(projectId, phaseId);
+        return ApiResponse.success(null);
     }
 }

@@ -159,6 +159,30 @@ class TaskServiceTest {
     }
 
     /**
+     * 验证可以软删除任务。
+     */
+    @Test
+    void shouldSoftDeleteTask() {
+        when(taskMapper.softDeleteById(10L)).thenReturn(1);
+
+        taskService.deleteTask(10L);
+
+        verify(taskMapper).softDeleteById(10L);
+    }
+
+    /**
+     * 验证可以恢复已删除任务。
+     */
+    @Test
+    void shouldRestoreDeletedTask() {
+        when(taskMapper.restoreById(10L)).thenReturn(1);
+
+        taskService.restoreDeletedTask(10L);
+
+        verify(taskMapper).restoreById(10L);
+    }
+
+    /**
      * 创建用于测试的项目阶段实体。
      */
     private ProjectPhase phase(Long id, Long projectId, String name) {
