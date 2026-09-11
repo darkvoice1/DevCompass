@@ -48,10 +48,10 @@ class TaskServiceTest {
     }
 
     /**
-     * 验证创建任务时使用默认状态和优先级。
+     * 验证新建任务固定使用待办状态，并使用默认优先级。
      */
     @Test
-    void shouldCreateTaskWithDefaultStatusAndPriority() {
+    void shouldCreateTaskWithTodoStatusAndDefaultPriority() {
         when(projectMapper.selectById(1L)).thenReturn(new Project());
         when(projectPhaseMapper.selectById(2L)).thenReturn(phase(2L, 1L, "开发实现"));
         doAnswer(invocation -> {

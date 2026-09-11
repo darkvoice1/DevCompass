@@ -57,7 +57,7 @@ public class TaskService {
         task.setPhaseId(request.getPhaseId());
         task.setTitle(request.getTitle());
         task.setDescription(request.getDescription());
-        task.setStatus(request.getStatus() == null ? TaskStatus.TODO : request.getStatus());
+        task.setStatus(TaskStatus.TODO);
         task.setPriority(request.getPriority() == null ? TaskPriority.MEDIUM : request.getPriority());
         task.setDueDate(request.getDueDate());
         task.setEstimatedHours(request.getEstimatedHours());
