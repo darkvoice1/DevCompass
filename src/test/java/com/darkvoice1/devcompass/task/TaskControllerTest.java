@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -94,9 +95,36 @@ class TaskControllerTest {
 
         mockMvc.perform(put("/api/v1/tasks/10")
                         .contentType("application/json")
-                        .content("{\"title\":\"更新任务\",\"status\":\"COMPLETED\"}"))
+                        .content("{\"title\":\"更新任务\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(10));
+    }
+
+    /**
+     * 验证任务状态变更接口。
+     */
+    @Test
+    void shouldChangeTaskStatus() throws Exception {
+        when(taskService.changeTaskStatus(any(), any())).thenReturn(taskResponse());
+
+        mockMvc.perform(patch("/api/v1/tasks/10/status")
+                        .contentType("application/json")
+                        .content("{\"targetStatus\":\"IN_PROGRESS\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("0"))
+                .andExpect(jsonPath("$.data.id").value(10));
+    }
+
+    /**
+     * 验证状态变更请求必须提供目标状态。
+     */
+    @Test
+    void shouldRejectStatusChangeWithoutTarget() throws Exception {
+        mockMvc.perform(patch("/api/v1/tasks/10/status")
+                        .contentType("application/json")
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.data.targetStatus").value("目标状态不能为空"));
     }
 
     /**

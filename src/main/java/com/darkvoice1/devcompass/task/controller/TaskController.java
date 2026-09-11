@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.darkvoice1.devcompass.common.web.ApiResponse;
 import com.darkvoice1.devcompass.task.dto.CreateTaskRequest;
+import com.darkvoice1.devcompass.task.dto.ChangeTaskStatusRequest;
 import com.darkvoice1.devcompass.task.dto.TaskDetailResponse;
 import com.darkvoice1.devcompass.task.dto.UpdateTaskRequest;
 import com.darkvoice1.devcompass.task.entity.TaskPriority;
@@ -62,6 +64,19 @@ public class TaskController {
     public ApiResponse<TaskDetailResponse> updateTask(
             @PathVariable Long taskId, @Valid @RequestBody UpdateTaskRequest request) {
         return ApiResponse.success(taskService.updateTask(taskId, request));
+    }
+
+    /**
+     * 变更任务状态。
+     *
+     * @param taskId 任务主键
+     * @param request 状态变更请求
+     * @return 更新后的任务详情
+     */
+    @PatchMapping("/{taskId}/status")
+    public ApiResponse<TaskDetailResponse> changeTaskStatus(
+            @PathVariable Long taskId, @Valid @RequestBody ChangeTaskStatusRequest request) {
+        return ApiResponse.success(taskService.changeTaskStatus(taskId, request));
     }
 
     /**

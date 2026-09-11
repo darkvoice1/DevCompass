@@ -3,7 +3,6 @@ package com.darkvoice1.devcompass.task.dto;
 import java.time.LocalDate;
 
 import com.darkvoice1.devcompass.task.entity.TaskPriority;
-import com.darkvoice1.devcompass.task.entity.TaskStatus;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -20,8 +19,6 @@ public class UpdateTaskRequest {
 
     @Size(max = 2000, message = "任务描述长度不能超过2000个字符")
     private String description;
-
-    private TaskStatus status;
 
     private TaskPriority priority;
 
@@ -44,14 +41,6 @@ public class UpdateTaskRequest {
 
     public void setDescription(String description) {
         this.description = description;
-    }
-
-    public TaskStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(TaskStatus status) {
-        this.status = status;
     }
 
     public TaskPriority getPriority() {

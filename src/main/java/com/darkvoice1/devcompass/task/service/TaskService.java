@@ -12,6 +12,7 @@ import com.darkvoice1.devcompass.project.entity.ProjectPhase;
 import com.darkvoice1.devcompass.project.repository.ProjectMapper;
 import com.darkvoice1.devcompass.project.repository.ProjectPhaseMapper;
 import com.darkvoice1.devcompass.task.dto.CreateTaskRequest;
+import com.darkvoice1.devcompass.task.dto.ChangeTaskStatusRequest;
 import com.darkvoice1.devcompass.task.dto.TaskDetailResponse;
 import com.darkvoice1.devcompass.task.dto.UpdateTaskRequest;
 import com.darkvoice1.devcompass.task.entity.Task;
@@ -76,12 +77,42 @@ public class TaskService {
         Task task = findTaskOrThrow(taskId);
         task.setTitle(request.getTitle());
         if (request.getDescription() != null) task.setDescription(request.getDescription());
-        if (request.getStatus() != null) task.setStatus(request.getStatus());
         if (request.getPriority() != null) task.setPriority(request.getPriority());
         if (request.getDueDate() != null) task.setDueDate(request.getDueDate());
         if (request.getEstimatedHours() != null) task.setEstimatedHours(request.getEstimatedHours());
         task.setUpdatedAt(Instant.now());
         taskMapper.updateById(task);
+        return toResponse(task);
+    }
+
+    /**
+     * 按统一流转规则变更任务状态。
+     *
+     * @param taskId 任务主键
+     * @param request 状态变更请求
+     * @return 变更后的任务详情
+     * @throws BusinessException 状态流转不合法或任务状态发生并发变化时抛出
+     */
+    public TaskDetailResponse changeTaskStatus(Long taskId, ChangeTaskStatusRequest request) {
+        Task task = findTaskOrThrow(taskId);
+        TaskStatus currentStatus = task.getStatus();
+        TaskStatus targetStatus = request.getTargetStatus();
+
+        if (targetStatus != null && currentStatus == targetStatus) {
+            return toResponse(task);
+        }
+        if (currentStatus == null || !currentStatus.canTransitionTo(targetStatus)) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR,
+                    "任务状态不能从 " + currentStatus + " 流转到 " + targetStatus);
+        }
+
+        Instant updatedAt = Instant.now();
+        if (taskMapper.updateStatusIfCurrent(taskId, currentStatus, targetStatus, updatedAt) == 0) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "任务状态已发生变化，请重试");
+        }
+
+        task.setStatus(targetStatus);
+        task.setUpdatedAt(updatedAt);
         return toResponse(task);
     }
 

@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -19,6 +20,7 @@ import com.darkvoice1.devcompass.project.entity.ProjectPhase;
 import com.darkvoice1.devcompass.project.repository.ProjectMapper;
 import com.darkvoice1.devcompass.project.repository.ProjectPhaseMapper;
 import com.darkvoice1.devcompass.task.dto.CreateTaskRequest;
+import com.darkvoice1.devcompass.task.dto.ChangeTaskStatusRequest;
 import com.darkvoice1.devcompass.task.dto.UpdateTaskRequest;
 import com.darkvoice1.devcompass.task.entity.Task;
 import com.darkvoice1.devcompass.task.entity.TaskPriority;
@@ -84,19 +86,95 @@ class TaskServiceTest {
         task.setProjectId(1L);
         task.setPhaseId(2L);
         task.setTitle("旧标题");
+        task.setStatus(TaskStatus.TODO);
         when(taskMapper.selectById(10L)).thenReturn(task);
         when(projectPhaseMapper.selectById(2L)).thenReturn(phase(2L, 1L, "开发实现"));
 
         UpdateTaskRequest request = new UpdateTaskRequest();
         request.setTitle("新标题");
-        request.setStatus(TaskStatus.COMPLETED);
 
         var response = taskService.updateTask(10L, request);
 
         assertThat(response.getTitle()).isEqualTo("新标题");
-        assertThat(response.getStatus()).isEqualTo(TaskStatus.COMPLETED);
+        assertThat(response.getStatus()).isEqualTo(TaskStatus.TODO);
         assertThat(response.getUpdatedAt()).isNotNull();
         verify(taskMapper).updateById(task);
+    }
+
+    /**
+     * 验证合法状态流转会更新状态和更新时间。
+     */
+    @Test
+    void shouldChangeTaskStatus() {
+        Task task = task(10L, TaskStatus.TODO);
+        when(taskMapper.selectById(10L)).thenReturn(task);
+        when(projectPhaseMapper.selectById(2L)).thenReturn(phase(2L, 1L, "开发实现"));
+        when(taskMapper.updateStatusIfCurrent(any(), any(), any(), any())).thenReturn(1);
+
+        ChangeTaskStatusRequest request = new ChangeTaskStatusRequest();
+        request.setTargetStatus(TaskStatus.IN_PROGRESS);
+
+        var response = taskService.changeTaskStatus(10L, request);
+
+        assertThat(response.getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
+        assertThat(response.getUpdatedAt()).isNotNull();
+        verify(taskMapper).updateStatusIfCurrent(
+                10L, TaskStatus.TODO, TaskStatus.IN_PROGRESS, response.getUpdatedAt());
+    }
+
+    /**
+     * 验证重复提交相同状态时直接返回，不更新数据库。
+     */
+    @Test
+    void shouldTreatSameStatusChangeAsIdempotent() {
+        Task task = task(10L, TaskStatus.TODO);
+        when(taskMapper.selectById(10L)).thenReturn(task);
+        when(projectPhaseMapper.selectById(2L)).thenReturn(phase(2L, 1L, "开发实现"));
+
+        ChangeTaskStatusRequest request = new ChangeTaskStatusRequest();
+        request.setTargetStatus(TaskStatus.TODO);
+
+        var response = taskService.changeTaskStatus(10L, request);
+
+        assertThat(response.getStatus()).isEqualTo(TaskStatus.TODO);
+        verifyNoInteractions(projectMapper);
+        org.mockito.Mockito.verify(taskMapper, org.mockito.Mockito.never())
+                .updateStatusIfCurrent(any(), any(), any(), any());
+    }
+
+    /**
+     * 验证非法状态流转会被拒绝。
+     */
+    @Test
+    void shouldRejectIllegalTaskStatusChange() {
+        Task task = task(10L, TaskStatus.COMPLETED);
+        when(taskMapper.selectById(10L)).thenReturn(task);
+
+        ChangeTaskStatusRequest request = new ChangeTaskStatusRequest();
+        request.setTargetStatus(TaskStatus.IN_PROGRESS);
+
+        assertThatThrownBy(() -> taskService.changeTaskStatus(10L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("任务状态不能从 COMPLETED 流转到 IN_PROGRESS");
+        org.mockito.Mockito.verify(taskMapper, org.mockito.Mockito.never())
+                .updateStatusIfCurrent(any(), any(), any(), any());
+    }
+
+    /**
+     * 验证并发状态变化会拒绝覆盖其他请求的更新。
+     */
+    @Test
+    void shouldRejectConcurrentStatusChange() {
+        Task task = task(10L, TaskStatus.TODO);
+        when(taskMapper.selectById(10L)).thenReturn(task);
+        when(taskMapper.updateStatusIfCurrent(any(), any(), any(), any())).thenReturn(0);
+
+        ChangeTaskStatusRequest request = new ChangeTaskStatusRequest();
+        request.setTargetStatus(TaskStatus.IN_PROGRESS);
+
+        assertThatThrownBy(() -> taskService.changeTaskStatus(10L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("任务状态已发生变化，请重试");
     }
 
     /**
@@ -191,6 +269,20 @@ class TaskServiceTest {
         phase.setProjectId(projectId);
         phase.setName(name);
         return phase;
+    }
+
+    /**
+     * 创建用于测试的任务实体。
+     */
+    private Task task(Long id, TaskStatus status) {
+        Task task = new Task();
+        task.setId(id);
+        task.setProjectId(1L);
+        task.setPhaseId(2L);
+        task.setTitle("测试任务");
+        task.setStatus(status);
+        task.setPriority(TaskPriority.MEDIUM);
+        return task;
     }
 
 }
