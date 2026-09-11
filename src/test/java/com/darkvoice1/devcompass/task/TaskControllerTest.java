@@ -20,6 +20,8 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import com.darkvoice1.devcompass.common.exception.GlobalExceptionHandler;
 import com.darkvoice1.devcompass.task.controller.TaskController;
 import com.darkvoice1.devcompass.task.dto.TaskDetailResponse;
+import com.darkvoice1.devcompass.task.dto.TaskBoardColumnResponse;
+import com.darkvoice1.devcompass.task.dto.TaskBoardResponse;
 import com.darkvoice1.devcompass.task.entity.TaskPriority;
 import com.darkvoice1.devcompass.task.entity.TaskStatus;
 import com.darkvoice1.devcompass.task.service.TaskService;
@@ -144,6 +146,22 @@ class TaskControllerTest {
     }
 
     /**
+     * 验证项目任务看板接口返回状态列和任务数量。
+     */
+    @Test
+    void shouldQueryTaskBoard() throws Exception {
+        when(taskService.getTaskBoard(1L)).thenReturn(boardResponse());
+
+        mockMvc.perform(get("/api/v1/tasks/board").param("projectId", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("0"))
+                .andExpect(jsonPath("$.data.projectId").value(1))
+                .andExpect(jsonPath("$.data.columns").isArray())
+                .andExpect(jsonPath("$.data.columns[0].status").value("TODO"))
+                .andExpect(jsonPath("$.data.columns[0].count").value(1));
+    }
+
+    /**
      * 验证任务软删除接口。
      */
     @Test
@@ -177,6 +195,24 @@ class TaskControllerTest {
         response.setTitle("实现任务接口");
         response.setStatus(TaskStatus.TODO);
         response.setPriority(TaskPriority.MEDIUM);
+        return response;
+    }
+
+    /**
+     * 创建测试用任务看板响应。
+     */
+    private TaskBoardResponse boardResponse() {
+        TaskBoardResponse response = new TaskBoardResponse();
+        response.setProjectId(1L);
+        java.util.List<TaskBoardColumnResponse> columns = new java.util.ArrayList<>();
+        for (TaskStatus status : TaskStatus.values()) {
+            TaskBoardColumnResponse column = new TaskBoardColumnResponse();
+            column.setStatus(status);
+            column.setTasks(status == TaskStatus.TODO ? java.util.List.of(taskResponse()) : java.util.List.of());
+            column.setCount(column.getTasks().size());
+            columns.add(column);
+        }
+        response.setColumns(columns);
         return response;
     }
 }

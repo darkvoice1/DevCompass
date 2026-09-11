@@ -21,6 +21,7 @@ import com.darkvoice1.devcompass.project.repository.ProjectMapper;
 import com.darkvoice1.devcompass.project.repository.ProjectPhaseMapper;
 import com.darkvoice1.devcompass.task.dto.CreateTaskRequest;
 import com.darkvoice1.devcompass.task.dto.ChangeTaskStatusRequest;
+import com.darkvoice1.devcompass.task.dto.TaskBoardResponse;
 import com.darkvoice1.devcompass.task.dto.UpdateTaskRequest;
 import com.darkvoice1.devcompass.task.entity.Task;
 import com.darkvoice1.devcompass.task.entity.TaskPriority;
@@ -198,6 +199,59 @@ class TaskServiceTest {
         assertThat(responses).hasSize(1);
         assertThat(responses.getFirst().getTitle()).isEqualTo("实现任务查询");
         assertThat(responses.getFirst().getPhaseName()).isEqualTo("开发实现");
+    }
+
+    /**
+     * 验证任务看板包含全部状态列，并按状态统计任务数量。
+     */
+    @Test
+    void shouldBuildTaskBoardWithAllStatusColumns() {
+        when(projectMapper.selectById(1L)).thenReturn(new Project());
+        when(projectPhaseMapper.selectList(any())).thenReturn(List.of(
+                phase(2L, 1L, "开发实现")));
+        Task todo = task(10L, TaskStatus.TODO);
+        todo.setTitle("待办任务");
+        Task completed = task(11L, TaskStatus.COMPLETED);
+        completed.setTitle("已完成任务");
+        when(taskMapper.selectList(any())).thenReturn(List.of(todo, completed));
+        when(projectPhaseMapper.selectById(2L)).thenReturn(phase(2L, 1L, "开发实现"));
+
+        TaskBoardResponse response = taskService.getTaskBoard(1L);
+
+        assertThat(response.getProjectId()).isEqualTo(1L);
+        assertThat(response.getColumns()).hasSize(4);
+        assertThat(response.getColumns().get(0).getStatus()).isEqualTo(TaskStatus.TODO);
+        assertThat(response.getColumns().get(0).getCount()).isEqualTo(1);
+        assertThat(response.getColumns().get(0).getTasks().getFirst().getPhaseName())
+                .isEqualTo("开发实现");
+        assertThat(response.getColumns().get(1).getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
+        assertThat(response.getColumns().get(1).getCount()).isZero();
+        assertThat(response.getColumns().get(2).getCount()).isEqualTo(1);
+        assertThat(response.getColumns().get(3).getCount()).isZero();
+    }
+
+    /**
+     * 验证看板排除软删除任务和已软删除阶段下的任务。
+     */
+    @Test
+    void shouldExcludeDeletedTasksAndDeletedPhasesFromBoard() {
+        when(projectMapper.selectById(1L)).thenReturn(new Project());
+        ProjectPhase activePhase = phase(2L, 1L, "开发实现");
+        ProjectPhase deletedPhase = phase(3L, 1L, "已删除阶段");
+        deletedPhase.setDeletedAt(java.time.Instant.now());
+        when(projectPhaseMapper.selectList(any())).thenReturn(List.of(activePhase, deletedPhase));
+        Task activeTask = task(10L, TaskStatus.TODO);
+        Task deletedTask = task(11L, TaskStatus.TODO);
+        deletedTask.setDeletedAt(java.time.Instant.now());
+        Task taskInDeletedPhase = task(12L, TaskStatus.TODO);
+        taskInDeletedPhase.setPhaseId(3L);
+        when(taskMapper.selectList(any())).thenReturn(List.of(activeTask, deletedTask, taskInDeletedPhase));
+        when(projectPhaseMapper.selectById(2L)).thenReturn(activePhase);
+
+        TaskBoardResponse response = taskService.getTaskBoard(1L);
+
+        assertThat(response.getColumns().getFirst().getCount()).isEqualTo(1);
+        assertThat(response.getColumns().getFirst().getTasks().getFirst().getId()).isEqualTo(10L);
     }
 
     /**

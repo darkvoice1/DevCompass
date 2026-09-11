@@ -19,13 +19,14 @@ import com.darkvoice1.devcompass.common.web.ApiResponse;
 import com.darkvoice1.devcompass.task.dto.CreateTaskRequest;
 import com.darkvoice1.devcompass.task.dto.ChangeTaskStatusRequest;
 import com.darkvoice1.devcompass.task.dto.TaskDetailResponse;
+import com.darkvoice1.devcompass.task.dto.TaskBoardResponse;
 import com.darkvoice1.devcompass.task.dto.UpdateTaskRequest;
 import com.darkvoice1.devcompass.task.entity.TaskPriority;
 import com.darkvoice1.devcompass.task.entity.TaskStatus;
 import com.darkvoice1.devcompass.task.service.TaskService;
 
 /**
- * 提供任务创建、编辑和查询接口。
+ * 提供任务创建、编辑、状态变更和查询接口。
  */
 @RestController
 @RequestMapping("/api/v1/tasks")
@@ -95,6 +96,18 @@ public class TaskController {
             @RequestParam(name = "priority", required = false) TaskPriority priority,
             @RequestParam(name = "keyword", required = false) String keyword) {
         return ApiResponse.success(taskService.queryTasks(projectId, status, priority, keyword));
+    }
+
+    /**
+     * 查询项目任务看板。
+     *
+     * @param projectId 项目主键
+     * @return 按任务状态分组的看板数据
+     */
+    @GetMapping("/board")
+    public ApiResponse<TaskBoardResponse> getTaskBoard(
+            @RequestParam(name = "projectId") Long projectId) {
+        return ApiResponse.success(taskService.getTaskBoard(projectId));
     }
 
     /**

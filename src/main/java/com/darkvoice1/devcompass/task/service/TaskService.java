@@ -1,7 +1,13 @@
 package com.darkvoice1.devcompass.task.service;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
@@ -14,6 +20,8 @@ import com.darkvoice1.devcompass.project.repository.ProjectPhaseMapper;
 import com.darkvoice1.devcompass.task.dto.CreateTaskRequest;
 import com.darkvoice1.devcompass.task.dto.ChangeTaskStatusRequest;
 import com.darkvoice1.devcompass.task.dto.TaskDetailResponse;
+import com.darkvoice1.devcompass.task.dto.TaskBoardColumnResponse;
+import com.darkvoice1.devcompass.task.dto.TaskBoardResponse;
 import com.darkvoice1.devcompass.task.dto.UpdateTaskRequest;
 import com.darkvoice1.devcompass.task.entity.Task;
 import com.darkvoice1.devcompass.task.entity.TaskPriority;
@@ -21,7 +29,7 @@ import com.darkvoice1.devcompass.task.entity.TaskStatus;
 import com.darkvoice1.devcompass.task.repository.TaskMapper;
 
 /**
- * 处理任务创建、编辑和查询业务。
+ * 处理任务创建、编辑、状态变更和查询业务。
  */
 @Service
 public class TaskService {
@@ -165,6 +173,60 @@ public class TaskService {
         }
         wrapper.orderByAsc("due_date").orderByDesc("updated_at");
         return taskMapper.selectList(wrapper).stream().map(this::toResponse).toList();
+    }
+
+    /**
+     * 查询项目任务看板，始终返回全部状态列。
+     *
+     * @param projectId 项目主键
+     * @return 按状态分组的任务看板
+     * @throws BusinessException 项目不存在时抛出
+     */
+    public TaskBoardResponse getTaskBoard(Long projectId) {
+        ensureProjectExists(projectId);
+
+        List<ProjectPhase> projectPhases = projectPhaseMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<ProjectPhase>()
+                        .eq("project_id", projectId)
+                        .orderByAsc("sort_order")
+                        .orderByAsc("id"));
+        Set<Long> activePhaseIds = new LinkedHashSet<>();
+        for (ProjectPhase phase : projectPhases) {
+            if (phase != null && phase.getDeletedAt() == null && phase.getId() != null) {
+                activePhaseIds.add(phase.getId());
+            }
+        }
+
+        Map<TaskStatus, List<TaskDetailResponse>> tasksByStatus = new EnumMap<>(TaskStatus.class);
+        for (TaskStatus status : TaskStatus.values()) {
+            tasksByStatus.put(status, new ArrayList<>());
+        }
+
+        var wrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Task>()
+                .eq("project_id", projectId)
+                .orderByAsc("phase_id")
+                .orderByAsc("due_date")
+                .orderByDesc("updated_at");
+        for (Task task : taskMapper.selectList(wrapper)) {
+            if (task.getDeletedAt() != null
+                    || !activePhaseIds.contains(task.getPhaseId())
+                    || task.getStatus() == null) {
+                continue;
+            }
+            tasksByStatus.get(task.getStatus()).add(toResponse(task));
+        }
+
+        TaskBoardResponse response = new TaskBoardResponse();
+        response.setProjectId(projectId);
+        response.setColumns(Arrays.stream(TaskStatus.values()).map(status -> {
+            TaskBoardColumnResponse column = new TaskBoardColumnResponse();
+            List<TaskDetailResponse> tasks = List.copyOf(tasksByStatus.get(status));
+            column.setStatus(status);
+            column.setTasks(tasks);
+            column.setCount(tasks.size());
+            return column;
+        }).toList());
+        return response;
     }
 
     /**
