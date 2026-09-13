@@ -42,6 +42,10 @@ public class TaskPageQueryRequest {
     @Size(max = 200, message = "任务关键字长度不能超过200个字符")
     private String keyword;
 
+    private String sortBy;
+
+    private String sortDirection;
+
     public Long getProjectId() {
         return projectId;
     }
@@ -112,5 +116,21 @@ public class TaskPageQueryRequest {
 
     public void setKeyword(String keyword) {
         this.keyword = keyword;
+    }
+
+    public String getSortBy() {
+        return sortBy;
+    }
+
+    public void setSortBy(String sortBy) {
+        this.sortBy = sortBy;
+    }
+
+    public String getSortDirection() {
+        return sortDirection;
+    }
+
+    public void setSortDirection(String sortDirection) {
+        this.sortDirection = sortDirection;
     }
 }

@@ -300,6 +300,60 @@ class TaskServiceTest {
     }
 
     /**
+     * 验证分页查询可以使用白名单字段和降序排序。
+     */
+    @Test
+    void shouldApplyRequestedSort() {
+        when(projectMapper.selectById(1L)).thenReturn(new Project());
+        Page<Task> result = new Page<>(1, 20);
+        result.setRecords(List.of());
+        when(taskMapper.selectPage(any(), any())).thenReturn(result);
+
+        TaskPageQueryRequest request = new TaskPageQueryRequest();
+        request.setProjectId(1L);
+        request.setSortBy("updatedAt");
+        request.setSortDirection("DESC");
+
+        taskService.queryTasksPage(request);
+
+        ArgumentCaptor<QueryWrapper<Task>> captor = ArgumentCaptor.forClass(QueryWrapper.class);
+        verify(taskMapper).selectPage(any(), captor.capture());
+        assertThat(captor.getValue().getSqlSegment())
+                .contains("ORDER BY updated_at DESC", "id ASC");
+    }
+
+    /**
+     * 验证非法排序字段不会进入 SQL。
+     */
+    @Test
+    void shouldRejectUnsupportedSortField() {
+        when(projectMapper.selectById(1L)).thenReturn(new Project());
+        TaskPageQueryRequest request = new TaskPageQueryRequest();
+        request.setProjectId(1L);
+        request.setSortBy("deletedAt");
+
+        assertThatThrownBy(() -> taskService.queryTasksPage(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("不支持的排序字段: deletedAt");
+    }
+
+    /**
+     * 验证非法排序方向会被拒绝。
+     */
+    @Test
+    void shouldRejectUnsupportedSortDirection() {
+        when(projectMapper.selectById(1L)).thenReturn(new Project());
+        TaskPageQueryRequest request = new TaskPageQueryRequest();
+        request.setProjectId(1L);
+        request.setSortBy("dueDate");
+        request.setSortDirection("random");
+
+        assertThatThrownBy(() -> taskService.queryTasksPage(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("排序方向只能是 asc 或 desc");
+    }
+
+    /**
      * 验证任务看板包含全部状态列，并按状态统计任务数量。
      */
     @Test

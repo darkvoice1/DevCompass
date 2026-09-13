@@ -39,6 +39,13 @@ import com.darkvoice1.devcompass.task.repository.TaskMapper;
 @Service
 public class TaskService {
 
+    private static final Map<String, String> SORT_COLUMNS = Map.of(
+            "dueDate", "due_date",
+            "updatedAt", "updated_at",
+            "createdAt", "created_at",
+            "priority", "priority",
+            "id", "id");
+
     private final TaskMapper taskMapper;
     private final ProjectMapper projectMapper;
     private final ProjectPhaseMapper projectPhaseMapper;
@@ -211,7 +218,7 @@ public class TaskService {
         if (request.getKeyword() != null && !request.getKeyword().isBlank()) {
             wrapper.like("title", request.getKeyword().trim());
         }
-        wrapper.orderByAsc("due_date").orderByDesc("updated_at").orderByAsc("id");
+        applyTaskSort(wrapper, request.getSortBy(), request.getSortDirection());
 
         Page<Task> page = new Page<>(request.getPage(), request.getPageSize());
         Page<Task> result = taskMapper.selectPage(page, wrapper);
@@ -298,13 +305,54 @@ public class TaskService {
         if (request == null || request.getPage() == null || request.getPage() < 1
                 || request.getPage() > 1_000_000L || request.getPageSize() == null
                 || request.getPageSize() < 1 || request.getPageSize() > 100
-                || request.getPhaseId() != null && request.getPhaseId() < 1) {
+                || (request.getPhaseId() != null && request.getPhaseId() < 1)) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "分页参数不合法");
         }
         LocalDate dueDateFrom = request.getDueDateFrom();
         LocalDate dueDateTo = request.getDueDateTo();
         if (dueDateFrom != null && dueDateTo != null && dueDateFrom.isAfter(dueDateTo)) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "截止日期范围不合法");
+        }
+    }
+
+    /**
+     * 根据白名单字段构造安全排序条件，并追加 ID 保证顺序稳定。
+     *
+     * @param wrapper 查询条件构造器
+     * @param sortBy 排序字段
+     * @param sortDirection 排序方向
+     */
+    private void applyTaskSort(QueryWrapper<Task> wrapper, String sortBy, String sortDirection) {
+        String normalizedSortBy = sortBy == null ? "" : sortBy.trim();
+        String normalizedDirection = sortDirection == null ? "" : sortDirection.trim();
+        String column = normalizedSortBy.isEmpty()
+                ? null : SORT_COLUMNS.get(normalizedSortBy);
+        if (!normalizedSortBy.isEmpty() && column == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,
+                    "不支持的排序字段: " + normalizedSortBy);
+        }
+        boolean descending;
+        if (normalizedDirection.isEmpty()) {
+            descending = false;
+        } else if ("asc".equalsIgnoreCase(normalizedDirection)) {
+            descending = false;
+        } else if ("desc".equalsIgnoreCase(normalizedDirection)) {
+            descending = true;
+        } else {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,
+                    "排序方向只能是 asc 或 desc");
+        }
+
+        if (column == null) {
+            wrapper.orderByAsc("due_date")
+                    .orderByDesc("updated_at");
+        } else if (descending) {
+            wrapper.orderByDesc(column);
+        } else {
+            wrapper.orderByAsc(column);
+        }
+        if (!"id".equals(column)) {
+            wrapper.orderByAsc("id");
         }
     }
 
