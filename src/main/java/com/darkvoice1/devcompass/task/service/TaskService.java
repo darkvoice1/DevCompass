@@ -11,6 +11,8 @@ import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.darkvoice1.devcompass.common.exception.BusinessException;
 import com.darkvoice1.devcompass.common.exception.ErrorCode;
 import com.darkvoice1.devcompass.project.entity.Project;
@@ -22,6 +24,8 @@ import com.darkvoice1.devcompass.task.dto.ChangeTaskStatusRequest;
 import com.darkvoice1.devcompass.task.dto.TaskDetailResponse;
 import com.darkvoice1.devcompass.task.dto.TaskBoardColumnResponse;
 import com.darkvoice1.devcompass.task.dto.TaskBoardResponse;
+import com.darkvoice1.devcompass.task.dto.TaskPageQueryRequest;
+import com.darkvoice1.devcompass.task.dto.TaskPageResponse;
 import com.darkvoice1.devcompass.task.dto.UpdateTaskRequest;
 import com.darkvoice1.devcompass.task.entity.Task;
 import com.darkvoice1.devcompass.task.entity.TaskPriority;
@@ -176,6 +180,38 @@ public class TaskService {
     }
 
     /**
+     * 按项目分页查询任务。
+     *
+     * @param request 分页查询参数
+     * @return 分页任务结果
+     * @throws BusinessException 项目不存在或分页参数不合法时抛出
+     */
+    public TaskPageResponse queryTasksPage(TaskPageQueryRequest request) {
+        validatePageRequest(request);
+        ensureProjectExists(request.getProjectId());
+
+        QueryWrapper<Task> wrapper = new QueryWrapper<Task>()
+                .eq("project_id", request.getProjectId());
+        if (request.getStatus() != null) {
+            wrapper.eq("status", request.getStatus());
+        }
+        if (request.getPriority() != null) {
+            wrapper.eq("priority", request.getPriority());
+        }
+        wrapper.orderByAsc("due_date").orderByDesc("updated_at").orderByAsc("id");
+
+        Page<Task> page = new Page<>(request.getPage(), request.getPageSize());
+        Page<Task> result = taskMapper.selectPage(page, wrapper);
+        TaskPageResponse response = new TaskPageResponse();
+        response.setRecords(result.getRecords().stream().map(this::toResponse).toList());
+        response.setTotal(result.getTotal());
+        response.setPage(result.getCurrent());
+        response.setPageSize(result.getSize());
+        response.setTotalPages(result.getPages());
+        return response;
+    }
+
+    /**
      * 查询项目任务看板，始终返回全部状态列。
      *
      * @param projectId 项目主键
@@ -240,6 +276,17 @@ public class TaskService {
         Task task = taskMapper.selectById(taskId);
         if (task == null) throw new BusinessException(ErrorCode.BUSINESS_ERROR, "任务不存在");
         return task;
+    }
+
+    /**
+     * 校验分页参数，防止无效或过大的分页请求进入数据库。
+     */
+    private void validatePageRequest(TaskPageQueryRequest request) {
+        if (request == null || request.getPage() == null || request.getPage() < 1
+                || request.getPage() > 1_000_000L || request.getPageSize() == null
+                || request.getPageSize() < 1 || request.getPageSize() > 100) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "分页参数不合法");
+        }
     }
 
     /**

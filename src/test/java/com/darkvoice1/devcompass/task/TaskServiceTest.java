@@ -21,13 +21,17 @@ import com.darkvoice1.devcompass.project.repository.ProjectMapper;
 import com.darkvoice1.devcompass.project.repository.ProjectPhaseMapper;
 import com.darkvoice1.devcompass.task.dto.CreateTaskRequest;
 import com.darkvoice1.devcompass.task.dto.ChangeTaskStatusRequest;
+import com.darkvoice1.devcompass.task.dto.TaskDetailResponse;
 import com.darkvoice1.devcompass.task.dto.TaskBoardResponse;
+import com.darkvoice1.devcompass.task.dto.TaskPageQueryRequest;
+import com.darkvoice1.devcompass.task.dto.TaskPageResponse;
 import com.darkvoice1.devcompass.task.dto.UpdateTaskRequest;
 import com.darkvoice1.devcompass.task.entity.Task;
 import com.darkvoice1.devcompass.task.entity.TaskPriority;
 import com.darkvoice1.devcompass.task.entity.TaskStatus;
 import com.darkvoice1.devcompass.task.repository.TaskMapper;
 import com.darkvoice1.devcompass.task.service.TaskService;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
 /**
  * 验证任务创建和编辑业务。
@@ -199,6 +203,51 @@ class TaskServiceTest {
         assertThat(responses).hasSize(1);
         assertThat(responses.getFirst().getTitle()).isEqualTo("实现任务查询");
         assertThat(responses.getFirst().getPhaseName()).isEqualTo("开发实现");
+    }
+
+    /**
+     * 验证分页查询返回当前页、总数和总页数。
+     */
+    @Test
+    void shouldQueryTasksByPage() {
+        when(projectMapper.selectById(1L)).thenReturn(new Project());
+        Task task = task(10L, TaskStatus.TODO);
+        task.setTitle("分页任务");
+        Page<Task> result = new Page<>(2, 2);
+        result.setTotal(5);
+        result.setRecords(List.of(task));
+        when(taskMapper.selectPage(any(), any())).thenReturn(result);
+        when(projectPhaseMapper.selectById(2L)).thenReturn(phase(2L, 1L, "开发实现"));
+
+        TaskPageQueryRequest request = new TaskPageQueryRequest();
+        request.setProjectId(1L);
+        request.setPage(2L);
+        request.setPageSize(2);
+        request.setStatus(TaskStatus.TODO);
+
+        TaskPageResponse response = taskService.queryTasksPage(request);
+
+        assertThat(response.getPage()).isEqualTo(2);
+        assertThat(response.getPageSize()).isEqualTo(2);
+        assertThat(response.getTotal()).isEqualTo(5);
+        assertThat(response.getTotalPages()).isEqualTo(3);
+        assertThat(response.getRecords()).hasSize(1);
+        assertThat(response.getRecords().getFirst().getTitle()).isEqualTo("分页任务");
+    }
+
+    /**
+     * 验证服务层拒绝超出上限的每页数量。
+     */
+    @Test
+    void shouldRejectInvalidPageSize() {
+        TaskPageQueryRequest request = new TaskPageQueryRequest();
+        request.setProjectId(1L);
+        request.setPage(1L);
+        request.setPageSize(101);
+
+        assertThatThrownBy(() -> taskService.queryTasksPage(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("分页参数不合法");
     }
 
     /**

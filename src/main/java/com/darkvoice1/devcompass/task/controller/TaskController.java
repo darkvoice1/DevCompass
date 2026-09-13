@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,6 +21,8 @@ import com.darkvoice1.devcompass.task.dto.CreateTaskRequest;
 import com.darkvoice1.devcompass.task.dto.ChangeTaskStatusRequest;
 import com.darkvoice1.devcompass.task.dto.TaskDetailResponse;
 import com.darkvoice1.devcompass.task.dto.TaskBoardResponse;
+import com.darkvoice1.devcompass.task.dto.TaskPageQueryRequest;
+import com.darkvoice1.devcompass.task.dto.TaskPageResponse;
 import com.darkvoice1.devcompass.task.dto.UpdateTaskRequest;
 import com.darkvoice1.devcompass.task.entity.TaskPriority;
 import com.darkvoice1.devcompass.task.entity.TaskStatus;
@@ -108,6 +111,18 @@ public class TaskController {
     public ApiResponse<TaskBoardResponse> getTaskBoard(
             @RequestParam(name = "projectId") Long projectId) {
         return ApiResponse.success(taskService.getTaskBoard(projectId));
+    }
+
+    /**
+     * 分页查询项目任务。
+     *
+     * @param request 分页查询参数
+     * @return 分页任务结果
+     */
+    @GetMapping("/page")
+    public ApiResponse<TaskPageResponse> queryTasksPage(
+            @Valid @ModelAttribute TaskPageQueryRequest request) {
+        return ApiResponse.success(taskService.queryTasksPage(request));
     }
 
     /**

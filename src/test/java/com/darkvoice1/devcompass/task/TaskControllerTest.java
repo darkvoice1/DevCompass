@@ -22,6 +22,7 @@ import com.darkvoice1.devcompass.task.controller.TaskController;
 import com.darkvoice1.devcompass.task.dto.TaskDetailResponse;
 import com.darkvoice1.devcompass.task.dto.TaskBoardColumnResponse;
 import com.darkvoice1.devcompass.task.dto.TaskBoardResponse;
+import com.darkvoice1.devcompass.task.dto.TaskPageResponse;
 import com.darkvoice1.devcompass.task.entity.TaskPriority;
 import com.darkvoice1.devcompass.task.entity.TaskStatus;
 import com.darkvoice1.devcompass.task.service.TaskService;
@@ -159,6 +160,42 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.data.columns").isArray())
                 .andExpect(jsonPath("$.data.columns[0].status").value("TODO"))
                 .andExpect(jsonPath("$.data.columns[0].count").value(1));
+    }
+
+    /**
+     * 验证分页查询接口返回分页元数据。
+     */
+    @Test
+    void shouldQueryTasksByPage() throws Exception {
+        TaskPageResponse response = new TaskPageResponse();
+        response.setRecords(java.util.List.of(taskResponse()));
+        response.setPage(1);
+        response.setPageSize(20);
+        response.setTotal(1);
+        response.setTotalPages(1);
+        when(taskService.queryTasksPage(any())).thenReturn(response);
+
+        mockMvc.perform(get("/api/v1/tasks/page")
+                        .param("projectId", "1")
+                        .param("page", "1")
+                        .param("pageSize", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.page").value(1))
+                .andExpect(jsonPath("$.data.pageSize").value(20))
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.records[0].id").value(10));
+    }
+
+    /**
+     * 验证分页查询拒绝超过上限的每页数量。
+     */
+    @Test
+    void shouldRejectOversizedPageSize() throws Exception {
+        mockMvc.perform(get("/api/v1/tasks/page")
+                        .param("projectId", "1")
+                        .param("pageSize", "101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.data.pageSize").value("每页数量不能超过100"));
     }
 
     /**
