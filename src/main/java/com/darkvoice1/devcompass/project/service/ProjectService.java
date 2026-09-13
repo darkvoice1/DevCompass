@@ -9,6 +9,7 @@ import com.darkvoice1.devcompass.common.exception.ErrorCode;
 import com.darkvoice1.devcompass.project.dto.CreateProjectRequest;
 import com.darkvoice1.devcompass.project.dto.ProjectDetailResponse;
 import com.darkvoice1.devcompass.project.dto.UpdateProjectRequest;
+import com.darkvoice1.devcompass.project.entity.ProgressMode;
 import com.darkvoice1.devcompass.project.entity.Project;
 import com.darkvoice1.devcompass.project.entity.ProjectStatus;
 import com.darkvoice1.devcompass.project.repository.ProjectMapper;
@@ -41,6 +42,8 @@ public class ProjectService {
         project.setName(request.getName());
         project.setDescription(request.getDescription());
         project.setStatus(request.getStatus() == null ? ProjectStatus.PLANNED : request.getStatus());
+        project.setProgressMode(ProgressMode.AUTO);
+        project.setAutoProgress(0);
         project.setTargetDate(request.getTargetDate());
         project.setTechStack(request.getTechStack());
         project.setTags(request.getTags());
@@ -185,6 +188,12 @@ public class ProjectService {
         response.setName(project.getName());
         response.setDescription(project.getDescription());
         response.setStatus(project.getStatus());
+        response.setProgressMode(project.getProgressMode());
+        response.setProgress(project.getProgressMode() == ProgressMode.MANUAL
+                ? project.getManualProgress() : project.getAutoProgress());
+        response.setAutoProgress(project.getAutoProgress());
+        response.setManualProgress(project.getManualProgress());
+        response.setProgressReason(project.getProgressReason());
         response.setTargetDate(project.getTargetDate());
         response.setTechStack(project.getTechStack());
         response.setTags(project.getTags());

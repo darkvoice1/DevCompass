@@ -15,6 +15,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import com.darkvoice1.devcompass.Application;
+import com.darkvoice1.devcompass.project.entity.ProgressMode;
 import com.darkvoice1.devcompass.project.entity.Project;
 import com.darkvoice1.devcompass.project.entity.ProjectStatus;
 import com.darkvoice1.devcompass.project.repository.ProjectMapper;
@@ -52,6 +53,10 @@ class ProjectMapperIntegrationTest {
         project.setName("研发罗盘");
         project.setDescription("个人研发管理平台");
         project.setStatus(ProjectStatus.IN_PROGRESS);
+        project.setProgressMode(ProgressMode.MANUAL);
+        project.setAutoProgress(40);
+        project.setManualProgress(60);
+        project.setProgressReason("核心功能已完成");
         project.setTargetDate(LocalDate.of(2026, 12, 31));
         project.setTechStack("Java,Spring Boot");
         project.setTags("后端,学习项目");
@@ -62,6 +67,10 @@ class ProjectMapperIntegrationTest {
         assertThat(stored).isNotNull();
         assertThat(stored.getName()).isEqualTo("研发罗盘");
         assertThat(stored.getStatus()).isEqualTo(ProjectStatus.IN_PROGRESS);
+        assertThat(stored.getProgressMode()).isEqualTo(ProgressMode.MANUAL);
+        assertThat(stored.getAutoProgress()).isEqualTo(40);
+        assertThat(stored.getManualProgress()).isEqualTo(60);
+        assertThat(stored.getProgressReason()).isEqualTo("核心功能已完成");
         assertThat(stored.getTargetDate()).isEqualTo(LocalDate.of(2026, 12, 31));
         assertThat(stored.getTechStack()).isEqualTo("Java,Spring Boot");
         assertThat(stored.getTags()).isEqualTo("后端,学习项目");

@@ -17,6 +17,7 @@ import com.darkvoice1.devcompass.common.exception.BusinessException;
 import com.darkvoice1.devcompass.project.dto.CreateProjectRequest;
 import com.darkvoice1.devcompass.project.dto.ProjectDetailResponse;
 import com.darkvoice1.devcompass.project.dto.UpdateProjectRequest;
+import com.darkvoice1.devcompass.project.entity.ProgressMode;
 import com.darkvoice1.devcompass.project.entity.Project;
 import com.darkvoice1.devcompass.project.entity.ProjectStatus;
 import com.darkvoice1.devcompass.project.repository.ProjectMapper;
@@ -63,6 +64,32 @@ class ProjectServiceTest {
         ProjectDetailResponse response = projectService.createProject(request);
 
         assertThat(response.getStatus()).isEqualTo(ProjectStatus.PLANNED);
+    }
+
+    /**
+     * 验证新项目默认使用自动进度并从零开始。
+     */
+    @Test
+    void shouldInitializeAutomaticProgressWhenCreatingProject() {
+        Project stored = new Project();
+        stored.setId(1L);
+        stored.setProgressMode(ProgressMode.AUTO);
+        stored.setAutoProgress(0);
+        doAnswer(invocation -> {
+            Project project = invocation.getArgument(0);
+            project.setId(1L);
+            return 1;
+        }).when(projectMapper).insert(any(Project.class));
+        when(projectMapper.selectById(1L)).thenReturn(stored);
+
+        CreateProjectRequest request = new CreateProjectRequest();
+        request.setName("进度测试项目");
+
+        ProjectDetailResponse response = projectService.createProject(request);
+
+        assertThat(response.getProgressMode()).isEqualTo(ProgressMode.AUTO);
+        assertThat(response.getProgress()).isZero();
+        assertThat(response.getAutoProgress()).isZero();
     }
 
     /**

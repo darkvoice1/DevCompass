@@ -25,6 +25,14 @@ public class Project {
 
     private ProjectStatus status;
 
+    private ProgressMode progressMode;
+
+    private Integer autoProgress;
+
+    private Integer manualProgress;
+
+    private String progressReason;
+
     private LocalDate targetDate;
 
     private String techStack;
@@ -77,6 +85,38 @@ public class Project {
 
     public void setStatus(ProjectStatus status) {
         this.status = status;
+    }
+
+    public ProgressMode getProgressMode() {
+        return progressMode;
+    }
+
+    public void setProgressMode(ProgressMode progressMode) {
+        this.progressMode = progressMode;
+    }
+
+    public Integer getAutoProgress() {
+        return autoProgress;
+    }
+
+    public void setAutoProgress(Integer autoProgress) {
+        this.autoProgress = autoProgress;
+    }
+
+    public Integer getManualProgress() {
+        return manualProgress;
+    }
+
+    public void setManualProgress(Integer manualProgress) {
+        this.manualProgress = manualProgress;
+    }
+
+    public String getProgressReason() {
+        return progressReason;
+    }
+
+    public void setProgressReason(String progressReason) {
+        this.progressReason = progressReason;
     }
 
     public LocalDate getTargetDate() {

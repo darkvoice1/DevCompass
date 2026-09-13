@@ -3,6 +3,7 @@ package com.darkvoice1.devcompass.project.dto;
 import java.time.Instant;
 import java.time.LocalDate;
 
+import com.darkvoice1.devcompass.project.entity.ProgressMode;
 import com.darkvoice1.devcompass.project.entity.ProjectStatus;
 
 /**
@@ -17,6 +18,16 @@ public class ProjectDetailResponse {
     private String description;
 
     private ProjectStatus status;
+
+    private ProgressMode progressMode;
+
+    private Integer progress;
+
+    private Integer autoProgress;
+
+    private Integer manualProgress;
+
+    private String progressReason;
 
     private LocalDate targetDate;
 
@@ -62,6 +73,46 @@ public class ProjectDetailResponse {
 
     public void setStatus(ProjectStatus status) {
         this.status = status;
+    }
+
+    public ProgressMode getProgressMode() {
+        return progressMode;
+    }
+
+    public void setProgressMode(ProgressMode progressMode) {
+        this.progressMode = progressMode;
+    }
+
+    public Integer getProgress() {
+        return progress;
+    }
+
+    public void setProgress(Integer progress) {
+        this.progress = progress;
+    }
+
+    public Integer getAutoProgress() {
+        return autoProgress;
+    }
+
+    public void setAutoProgress(Integer autoProgress) {
+        this.autoProgress = autoProgress;
+    }
+
+    public Integer getManualProgress() {
+        return manualProgress;
+    }
+
+    public void setManualProgress(Integer manualProgress) {
+        this.manualProgress = manualProgress;
+    }
+
+    public String getProgressReason() {
+        return progressReason;
+    }
+
+    public void setProgressReason(String progressReason) {
+        this.progressReason = progressReason;
     }
 
     public LocalDate getTargetDate() {
