@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.time.LocalDate;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,8 @@ import com.darkvoice1.devcompass.task.entity.TaskStatus;
 import com.darkvoice1.devcompass.task.repository.TaskMapper;
 import com.darkvoice1.devcompass.task.service.TaskService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import org.mockito.ArgumentCaptor;
 
 /**
  * 验证任务创建和编辑业务。
@@ -248,6 +251,52 @@ class TaskServiceTest {
         assertThatThrownBy(() -> taskService.queryTasksPage(request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("分页参数不合法");
+    }
+
+    /**
+     * 验证分页查询支持阶段、日期范围和标题关键字组合筛选。
+     */
+    @Test
+    void shouldApplyCombinedTaskFilters() {
+        when(projectMapper.selectById(1L)).thenReturn(new Project());
+        Page<Task> result = new Page<>(1, 20);
+        result.setTotal(0);
+        result.setRecords(List.of());
+        when(taskMapper.selectPage(any(), any())).thenReturn(result);
+
+        TaskPageQueryRequest request = new TaskPageQueryRequest();
+        request.setProjectId(1L);
+        request.setPhaseId(2L);
+        request.setStatus(TaskStatus.TODO);
+        request.setPriority(TaskPriority.HIGH);
+        request.setDueDateFrom(LocalDate.of(2026, 1, 1));
+        request.setDueDateTo(LocalDate.of(2026, 12, 31));
+        request.setKeyword(" 接口 ");
+
+        taskService.queryTasksPage(request);
+
+        ArgumentCaptor<QueryWrapper<Task>> captor = ArgumentCaptor.forClass(QueryWrapper.class);
+        verify(taskMapper).selectPage(any(), captor.capture());
+        assertThat(captor.getValue().getSqlSegment())
+                .contains("project_id", "phase_id", "status", "priority", "due_date", "title");
+        assertThat(captor.getValue().getParamNameValuePairs().values())
+                .contains(1L, 2L, TaskStatus.TODO, TaskPriority.HIGH,
+                        LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), "%接口%");
+    }
+
+    /**
+     * 验证截止日期开始时间晚于结束时间时拒绝查询。
+     */
+    @Test
+    void shouldRejectInvalidDueDateRange() {
+        TaskPageQueryRequest request = new TaskPageQueryRequest();
+        request.setProjectId(1L);
+        request.setDueDateFrom(LocalDate.of(2026, 12, 31));
+        request.setDueDateTo(LocalDate.of(2026, 1, 1));
+
+        assertThatThrownBy(() -> taskService.queryTasksPage(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("截止日期范围不合法");
     }
 
     /**

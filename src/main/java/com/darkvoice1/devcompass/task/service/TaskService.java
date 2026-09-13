@@ -1,6 +1,7 @@
 package com.darkvoice1.devcompass.task.service;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
@@ -198,6 +199,18 @@ public class TaskService {
         if (request.getPriority() != null) {
             wrapper.eq("priority", request.getPriority());
         }
+        if (request.getPhaseId() != null) {
+            wrapper.eq("phase_id", request.getPhaseId());
+        }
+        if (request.getDueDateFrom() != null) {
+            wrapper.ge("due_date", request.getDueDateFrom());
+        }
+        if (request.getDueDateTo() != null) {
+            wrapper.le("due_date", request.getDueDateTo());
+        }
+        if (request.getKeyword() != null && !request.getKeyword().isBlank()) {
+            wrapper.like("title", request.getKeyword().trim());
+        }
         wrapper.orderByAsc("due_date").orderByDesc("updated_at").orderByAsc("id");
 
         Page<Task> page = new Page<>(request.getPage(), request.getPageSize());
@@ -284,8 +297,14 @@ public class TaskService {
     private void validatePageRequest(TaskPageQueryRequest request) {
         if (request == null || request.getPage() == null || request.getPage() < 1
                 || request.getPage() > 1_000_000L || request.getPageSize() == null
-                || request.getPageSize() < 1 || request.getPageSize() > 100) {
+                || request.getPageSize() < 1 || request.getPageSize() > 100
+                || request.getPhaseId() != null && request.getPhaseId() < 1) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "分页参数不合法");
+        }
+        LocalDate dueDateFrom = request.getDueDateFrom();
+        LocalDate dueDateTo = request.getDueDateTo();
+        if (dueDateFrom != null && dueDateTo != null && dueDateFrom.isAfter(dueDateTo)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "截止日期范围不合法");
         }
     }
 
