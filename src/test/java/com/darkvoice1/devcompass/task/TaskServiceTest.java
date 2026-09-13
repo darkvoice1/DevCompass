@@ -9,20 +9,22 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import java.util.List;
 import java.time.LocalDate;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.darkvoice1.devcompass.common.exception.BusinessException;
 import com.darkvoice1.devcompass.project.entity.Project;
 import com.darkvoice1.devcompass.project.entity.ProjectPhase;
 import com.darkvoice1.devcompass.project.repository.ProjectMapper;
 import com.darkvoice1.devcompass.project.repository.ProjectPhaseMapper;
-import com.darkvoice1.devcompass.task.dto.CreateTaskRequest;
 import com.darkvoice1.devcompass.task.dto.ChangeTaskStatusRequest;
-import com.darkvoice1.devcompass.task.dto.TaskDetailResponse;
+import com.darkvoice1.devcompass.task.dto.CreateTaskRequest;
 import com.darkvoice1.devcompass.task.dto.TaskBoardResponse;
 import com.darkvoice1.devcompass.task.dto.TaskPageQueryRequest;
 import com.darkvoice1.devcompass.task.dto.TaskPageResponse;
@@ -32,9 +34,6 @@ import com.darkvoice1.devcompass.task.entity.TaskPriority;
 import com.darkvoice1.devcompass.task.entity.TaskStatus;
 import com.darkvoice1.devcompass.task.repository.TaskMapper;
 import com.darkvoice1.devcompass.task.service.TaskService;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import org.mockito.ArgumentCaptor;
 
 /**
  * 验证任务创建和编辑业务。
@@ -275,7 +274,7 @@ class TaskServiceTest {
 
         taskService.queryTasksPage(request);
 
-        ArgumentCaptor<QueryWrapper<Task>> captor = ArgumentCaptor.forClass(QueryWrapper.class);
+        ArgumentCaptor<QueryWrapper<Task>> captor = ArgumentCaptor.captor();
         verify(taskMapper).selectPage(any(), captor.capture());
         assertThat(captor.getValue().getSqlSegment())
                 .contains("project_id", "phase_id", "status", "priority", "due_date", "title");
@@ -316,7 +315,7 @@ class TaskServiceTest {
 
         taskService.queryTasksPage(request);
 
-        ArgumentCaptor<QueryWrapper<Task>> captor = ArgumentCaptor.forClass(QueryWrapper.class);
+        ArgumentCaptor<QueryWrapper<Task>> captor = ArgumentCaptor.captor();
         verify(taskMapper).selectPage(any(), captor.capture());
         assertThat(captor.getValue().getSqlSegment())
                 .contains("ORDER BY updated_at DESC", "id ASC");
