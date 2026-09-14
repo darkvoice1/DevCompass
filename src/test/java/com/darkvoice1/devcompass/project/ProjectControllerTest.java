@@ -22,7 +22,10 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import com.darkvoice1.devcompass.common.exception.GlobalExceptionHandler;
 import com.darkvoice1.devcompass.project.controller.ProjectController;
 import com.darkvoice1.devcompass.project.dto.ProjectDetailResponse;
+import com.darkvoice1.devcompass.project.dto.ProjectProgressResponse;
+import com.darkvoice1.devcompass.project.entity.ProgressMode;
 import com.darkvoice1.devcompass.project.entity.ProjectStatus;
+import com.darkvoice1.devcompass.project.service.ProgressService;
 import com.darkvoice1.devcompass.project.service.ProjectService;
 
 /**
@@ -31,6 +34,7 @@ import com.darkvoice1.devcompass.project.service.ProjectService;
 class ProjectControllerTest {
 
     private ProjectService projectService;
+    private ProgressService progressService;
 
     private MockMvc mockMvc;
 
@@ -40,9 +44,10 @@ class ProjectControllerTest {
     @BeforeEach
     void setUp() {
         projectService = mock(ProjectService.class);
+        progressService = mock(ProgressService.class);
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
-        mockMvc = MockMvcBuilders.standaloneSetup(new ProjectController(projectService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new ProjectController(projectService, progressService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setValidator(validator)
                 .build();
@@ -146,6 +151,46 @@ class ProjectControllerTest {
                 .andExpect(jsonPath("$.data.name").value("更新后的研发罗盘"))
                 .andExpect(jsonPath("$.data.status").value("COMPLETED"))
                 .andExpect(jsonPath("$.data.tags").value("后端,学习项目"));
+    }
+
+    /**
+     * 验证可以保存项目人工校准进度。
+     */
+    @Test
+    void shouldUpdateProjectProgress() throws Exception {
+        ProjectProgressResponse response = new ProjectProgressResponse();
+        response.setProjectId(1L);
+        response.setMode(ProgressMode.MANUAL);
+        response.setProgress(60);
+        response.setProgressReason("核心功能已经完成");
+        when(progressService.updateProjectProgress(any(), any())).thenReturn(response);
+
+        mockMvc.perform(put("/api/v1/projects/1/progress")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "mode": "MANUAL",
+                                  "manualProgress": 60,
+                                  "progressReason": "核心功能已经完成"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("0"))
+                .andExpect(jsonPath("$.data.mode").value("MANUAL"))
+                .andExpect(jsonPath("$.data.progress").value(60));
+    }
+
+    /**
+     * 验证进度模式缺失时返回字段校验错误。
+     */
+    @Test
+    void shouldRejectProjectProgressWithoutMode() throws Exception {
+        mockMvc.perform(put("/api/v1/projects/1/progress")
+                        .contentType("application/json")
+                        .content("{\"manualProgress\":60}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.data.mode").value("进度模式不能为空"));
     }
 
     /**

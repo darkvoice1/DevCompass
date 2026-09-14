@@ -12,12 +12,14 @@ import org.junit.jupiter.api.Test;
 
 import com.darkvoice1.devcompass.common.exception.BusinessException;
 import com.darkvoice1.devcompass.project.entity.Project;
+import com.darkvoice1.devcompass.project.entity.ProgressMode;
+import com.darkvoice1.devcompass.project.dto.UpdateProjectProgressRequest;
 import com.darkvoice1.devcompass.project.repository.ProjectMapper;
 import com.darkvoice1.devcompass.project.service.ProgressService;
 import com.darkvoice1.devcompass.task.repository.TaskMapper;
 
 /**
- * 验证项目自动进度计算服务。
+ * 验证项目自动进度计算和人工校准服务。
  */
 class ProgressServiceTest {
 
@@ -87,5 +89,68 @@ class ProgressServiceTest {
         assertThatThrownBy(() -> progressService.calculateAutoProgress(99L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("项目不存在");
+    }
+
+    /**
+     * 验证手动模式会保存人工进度和校准原因。
+     */
+    @Test
+    void shouldSaveManualProgressAndReason() {
+        Project project = new Project();
+        project.setId(1L);
+        project.setAutoProgress(40);
+        when(projectMapper.selectById(1L)).thenReturn(project);
+        UpdateProjectProgressRequest request = new UpdateProjectProgressRequest();
+        request.setMode(ProgressMode.MANUAL);
+        request.setManualProgress(60);
+        request.setProgressReason("核心功能已经完成");
+
+        var response = progressService.updateProjectProgress(1L, request);
+
+        assertThat(response.getMode()).isEqualTo(ProgressMode.MANUAL);
+        assertThat(response.getProgress()).isEqualTo(60);
+        assertThat(response.getProgressReason()).isEqualTo("核心功能已经完成");
+        verify(projectMapper).updateById(project);
+    }
+
+    /**
+     * 验证手动模式缺少校准原因时会被拒绝。
+     */
+    @Test
+    void shouldRejectManualProgressWithoutReason() {
+        when(projectMapper.selectById(1L)).thenReturn(new Project());
+        UpdateProjectProgressRequest request = new UpdateProjectProgressRequest();
+        request.setMode(ProgressMode.MANUAL);
+        request.setManualProgress(60);
+
+        assertThatThrownBy(() -> progressService.updateProjectProgress(1L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("手动模式必须填写校准原因");
+    }
+
+    /**
+     * 验证切回自动模式时会重新计算并清除人工校准数据。
+     */
+    @Test
+    void shouldRecalculateWhenSwitchingBackToAutoMode() {
+        Project project = new Project();
+        project.setId(1L);
+        project.setProgressMode(ProgressMode.MANUAL);
+        project.setManualProgress(80);
+        project.setProgressReason("临时校准");
+        when(projectMapper.selectById(1L)).thenReturn(project);
+        when(taskMapper.selectCount(any()))
+                .thenReturn(3L)
+                .thenReturn(1L);
+        UpdateProjectProgressRequest request = new UpdateProjectProgressRequest();
+        request.setMode(ProgressMode.AUTO);
+
+        var response = progressService.updateProjectProgress(1L, request);
+
+        assertThat(response.getMode()).isEqualTo(ProgressMode.AUTO);
+        assertThat(response.getProgress()).isEqualTo(33);
+        assertThat(response.getManualProgress()).isNull();
+        assertThat(response.getProgressReason()).isNull();
+        verify(projectMapper).updateById(project);
     }
 }

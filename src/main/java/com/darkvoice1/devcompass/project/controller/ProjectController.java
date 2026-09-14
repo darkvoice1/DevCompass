@@ -14,7 +14,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.darkvoice1.devcompass.common.web.ApiResponse;
 import com.darkvoice1.devcompass.project.dto.CreateProjectRequest;
 import com.darkvoice1.devcompass.project.dto.ProjectDetailResponse;
+import com.darkvoice1.devcompass.project.dto.ProjectProgressResponse;
 import com.darkvoice1.devcompass.project.dto.UpdateProjectRequest;
+import com.darkvoice1.devcompass.project.dto.UpdateProjectProgressRequest;
+import com.darkvoice1.devcompass.project.service.ProgressService;
 import com.darkvoice1.devcompass.project.service.ProjectService;
 
 /**
@@ -25,14 +28,17 @@ import com.darkvoice1.devcompass.project.service.ProjectService;
 public class ProjectController {
 
     private final ProjectService projectService;
+    private final ProgressService progressService;
 
     /**
      * 创建项目控制器。
      *
      * @param projectService 项目业务服务
+     * @param progressService 项目进度业务服务
      */
-    public ProjectController(ProjectService projectService) {
+    public ProjectController(ProjectService projectService, ProgressService progressService) {
         this.projectService = projectService;
+        this.progressService = progressService;
     }
 
     /**
@@ -69,6 +75,19 @@ public class ProjectController {
     public ApiResponse<ProjectDetailResponse> updateProject(
             @PathVariable Long projectId, @Valid @RequestBody UpdateProjectRequest request) {
         return ApiResponse.success(projectService.updateProject(projectId, request));
+    }
+
+    /**
+     * 切换项目进度模式或保存人工校准值。
+     *
+     * @param projectId 项目主键
+     * @param request 进度更新请求
+     * @return 更新后的项目进度
+     */
+    @PutMapping("/{projectId}/progress")
+    public ApiResponse<ProjectProgressResponse> updateProjectProgress(
+            @PathVariable Long projectId, @Valid @RequestBody UpdateProjectProgressRequest request) {
+        return ApiResponse.success(progressService.updateProjectProgress(projectId, request));
     }
 
     /**
