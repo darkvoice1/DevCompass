@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -21,6 +22,12 @@ public class WorkLogContentRequest {
     @NotBlank(message = "完成总结不能为空")
     @Size(max = 5000, message = "完成总结长度不能超过5000个字符")
     private String summaryContent;
+
+    @NotBlank(message = "提交短哈希不能为空")
+    @Size(max = 500, message = "提交短哈希长度不能超过500个字符")
+    @Pattern(regexp = "(?i)[0-9a-f]{7,12}(\\s*,\\s*[0-9a-f]{7,12})*",
+            message = "提交短哈希格式不正确")
+    private String commitHashes;
 
     @NotNull(message = "实际耗时不能为空")
     @Min(value = 0, message = "实际耗时不能为负数")
@@ -51,6 +58,14 @@ public class WorkLogContentRequest {
 
     public void setSummaryContent(String summaryContent) {
         this.summaryContent = summaryContent;
+    }
+
+    public String getCommitHashes() {
+        return commitHashes;
+    }
+
+    public void setCommitHashes(String commitHashes) {
+        this.commitHashes = commitHashes;
     }
 
     public Integer getSpentMinutes() {

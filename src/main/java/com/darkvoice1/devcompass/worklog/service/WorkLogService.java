@@ -2,13 +2,17 @@ package com.darkvoice1.devcompass.worklog.service;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.darkvoice1.devcompass.common.exception.BusinessException;
 import com.darkvoice1.devcompass.common.exception.ErrorCode;
+import com.darkvoice1.devcompass.task.entity.Task;
+import com.darkvoice1.devcompass.task.repository.TaskMapper;
 import com.darkvoice1.devcompass.worklog.dto.WorkLogContentRequest;
 import com.darkvoice1.devcompass.worklog.dto.WorkLogDateRangeQueryRequest;
 import com.darkvoice1.devcompass.worklog.dto.WorkLogResponse;
@@ -22,14 +26,17 @@ import com.darkvoice1.devcompass.worklog.repository.WorkLogMapper;
 public class WorkLogService {
 
     private final WorkLogMapper workLogMapper;
+    private final TaskMapper taskMapper;
 
     /**
      * 创建工作日志服务。
      *
      * @param workLogMapper 工作日志数据访问对象
+     * @param taskMapper 任务数据访问对象
      */
-    public WorkLogService(WorkLogMapper workLogMapper) {
+    public WorkLogService(WorkLogMapper workLogMapper, TaskMapper taskMapper) {
         this.workLogMapper = workLogMapper;
+        this.taskMapper = taskMapper;
     }
 
     /**
@@ -88,6 +95,41 @@ public class WorkLogService {
     }
 
     /**
+     * 将指定日期范围内的工作日志导出为 Markdown 内容。
+     *
+     * @param request 日期范围查询参数
+     * @return Markdown 格式的工作日志内容
+     */
+    public String exportWorkLogs(WorkLogDateRangeQueryRequest request) {
+        List<WorkLogResponse> workLogs = queryWorkLogsByDateRange(request);
+        StringBuilder markdown = new StringBuilder("# 工作日志\n\n")
+                .append("日期范围：")
+                .append(request.getLogDateFrom())
+                .append(" 至 ")
+                .append(request.getLogDateTo())
+                .append("\n\n");
+        LocalDate currentDate = null;
+        for (WorkLogResponse workLog : workLogs) {
+            if (!workLog.getLogDate().equals(currentDate)) {
+                currentDate = workLog.getLogDate();
+                markdown.append("## ").append(currentDate).append("\n\n");
+            }
+            markdown.append("### 任务 #")
+                    .append(workLog.getTaskId())
+                    .append("：")
+                    .append(resolveTaskTitle(workLog.getTaskId()))
+                    .append("\n\n")
+                    .append("- 计划：").append(displayContent(workLog.getPlanContent())).append("\n")
+                    .append("- 完成总结：").append(workLog.getSummaryContent()).append("\n")
+                    .append("- 提交记录：").append(displayContent(workLog.getCommitHashes())).append("\n")
+                    .append("- 实际耗时：").append(workLog.getSpentMinutes()).append(" 分钟\n")
+                    .append("- 阻塞原因：").append(displayContent(workLog.getBlockerReason()))
+                    .append("\n\n");
+        }
+        return markdown.toString();
+    }
+
+    /**
      * 编辑已创建的工作日志。
      *
      * @param workLogId 工作日志主键
@@ -122,12 +164,37 @@ public class WorkLogService {
     }
 
     /**
+     * 查询任务标题，已删除任务保留可识别的导出标记。
+     */
+    private String resolveTaskTitle(Long taskId) {
+        Task task = taskMapper.selectById(taskId);
+        return task == null ? "已删除任务" : task.getTitle();
+    }
+
+    /**
+     * 将空白的可选内容展示为“无”。
+     */
+    private String displayContent(String content) {
+        return content == null || content.isBlank() ? "无" : content;
+    }
+
+    /**
+     * 统一提交短哈希列表的分隔格式。
+     */
+    private String normalizeCommitHashes(String commitHashes) {
+        return Arrays.stream(commitHashes.split(","))
+                .map(String::trim)
+                .collect(Collectors.joining(","));
+    }
+
+    /**
      * 将请求中的日志内容写入实体。
      */
     private void applyContent(WorkLog workLog, WorkLogContentRequest request) {
         workLog.setLogDate(request.getLogDate());
         workLog.setPlanContent(request.getPlanContent());
         workLog.setSummaryContent(request.getSummaryContent());
+        workLog.setCommitHashes(normalizeCommitHashes(request.getCommitHashes()));
         workLog.setSpentMinutes(request.getSpentMinutes());
         workLog.setBlockerReason(request.getBlockerReason());
     }
@@ -142,6 +209,7 @@ public class WorkLogService {
         response.setLogDate(workLog.getLogDate());
         response.setPlanContent(workLog.getPlanContent());
         response.setSummaryContent(workLog.getSummaryContent());
+        response.setCommitHashes(workLog.getCommitHashes());
         response.setSpentMinutes(workLog.getSpentMinutes());
         response.setBlockerReason(workLog.getBlockerReason());
         response.setCreatedAt(workLog.getCreatedAt());

@@ -13,6 +13,7 @@ public class WorkLogResponse {
     private LocalDate logDate;
     private String planContent;
     private String summaryContent;
+    private String commitHashes;
     private Integer spentMinutes;
     private String blockerReason;
     private Instant createdAt;
@@ -56,6 +57,14 @@ public class WorkLogResponse {
 
     public void setSummaryContent(String summaryContent) {
         this.summaryContent = summaryContent;
+    }
+
+    public String getCommitHashes() {
+        return commitHashes;
+    }
+
+    public void setCommitHashes(String commitHashes) {
+        this.commitHashes = commitHashes;
     }
 
     public Integer getSpentMinutes() {

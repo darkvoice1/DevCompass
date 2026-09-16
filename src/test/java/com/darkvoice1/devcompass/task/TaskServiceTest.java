@@ -544,6 +544,7 @@ class TaskServiceTest {
         WorkLogContentRequest request = new WorkLogContentRequest();
         request.setLogDate(LocalDate.of(2026, 9, 16));
         request.setSummaryContent("已完成任务");
+        request.setCommitHashes("2dfd4ff");
         request.setSpentMinutes(60);
         return request;
     }

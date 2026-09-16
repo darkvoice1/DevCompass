@@ -27,6 +27,8 @@ public class WorkLog {
 
     private String summaryContent;
 
+    private String commitHashes;
+
     private Integer spentMinutes;
 
     private String blockerReason;
@@ -80,6 +82,14 @@ public class WorkLog {
 
     public void setSummaryContent(String summaryContent) {
         this.summaryContent = summaryContent;
+    }
+
+    public String getCommitHashes() {
+        return commitHashes;
+    }
+
+    public void setCommitHashes(String commitHashes) {
+        this.commitHashes = commitHashes;
     }
 
     public Integer getSpentMinutes() {

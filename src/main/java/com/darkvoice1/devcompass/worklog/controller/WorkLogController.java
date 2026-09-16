@@ -1,9 +1,13 @@
 package com.darkvoice1.devcompass.worklog.controller;
 
 import java.util.List;
+import java.nio.charset.StandardCharsets;
 
 import jakarta.validation.Valid;
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -46,6 +50,23 @@ public class WorkLogController {
     public ApiResponse<List<WorkLogResponse>> queryWorkLogsByDateRange(
             @Valid @ModelAttribute WorkLogDateRangeQueryRequest request) {
         return ApiResponse.success(workLogService.queryWorkLogsByDateRange(request));
+    }
+
+    /**
+     * 导出指定日期范围内的工作日志 Markdown 文件。
+     *
+     * @param request 日期范围查询参数
+     * @return Markdown 文件内容
+     */
+    @GetMapping(value = "/export", produces = "text/markdown;charset=UTF-8")
+    public ResponseEntity<String> exportWorkLogs(
+            @Valid @ModelAttribute WorkLogDateRangeQueryRequest request) {
+        String fileName = "work-logs-" + request.getLogDateFrom()
+                + "-to-" + request.getLogDateTo() + ".md";
+        return ResponseEntity.ok()
+                .contentType(new MediaType("text", "markdown", StandardCharsets.UTF_8))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                .body(workLogService.exportWorkLogs(request));
     }
 
     /**

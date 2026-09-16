@@ -86,6 +86,7 @@ class WorkLogMapperIntegrationTest {
         workLog.setLogDate(LocalDate.of(2026, 9, 16));
         workLog.setPlanContent("完成数据库迁移");
         workLog.setSummaryContent("已完成数据模型设计");
+        workLog.setCommitHashes("2dfd4ff");
         workLog.setSpentMinutes(90);
         workLog.setBlockerReason("暂无阻塞");
         workLogMapper.insert(workLog);
@@ -95,6 +96,7 @@ class WorkLogMapperIntegrationTest {
         assertThat(storedWorkLog.getTaskId()).isEqualTo(task.getId());
         assertThat(storedWorkLog.getLogDate()).isEqualTo(LocalDate.of(2026, 9, 16));
         assertThat(storedWorkLog.getSpentMinutes()).isEqualTo(90);
+        assertThat(storedWorkLog.getCommitHashes()).isEqualTo("2dfd4ff");
         assertThat(storedWorkLog.getCreatedAt()).isNotNull();
         assertThat(storedWorkLog.getUpdatedAt()).isNotNull();
 
@@ -119,18 +121,17 @@ class WorkLogMapperIntegrationTest {
         phase.setName("日志查询阶段");
         projectPhaseMapper.insert(phase);
 
-        WorkLog beforeRange = createWorkLog(project, phase, "范围前任务", LocalDate.of(2026, 10, 1));
+        createWorkLog(project, phase, "范围前任务", LocalDate.of(2026, 10, 1));
         WorkLog withinRange = createWorkLog(project, phase, "范围内任务", LocalDate.of(2026, 10, 2));
-        WorkLog afterRange = createWorkLog(project, phase, "范围后任务", LocalDate.of(2026, 10, 3));
+        createWorkLog(project, phase, "范围后任务", LocalDate.of(2026, 10, 3));
 
         List<WorkLog> logs = workLogMapper.selectList(new QueryWrapper<WorkLog>()
                 .ge("log_date", LocalDate.of(2026, 10, 2))
                 .le("log_date", LocalDate.of(2026, 10, 2))
                 .orderByDesc("log_date"));
 
-        assertThat(logs).extracting(WorkLog::getId).containsExactly(withinRange.getId());
-        assertThat(logs).extracting(WorkLog::getId)
-                .doesNotContain(beforeRange.getId(), afterRange.getId());
+        assertThat(logs).hasSize(1);
+        assertThat(logs.get(0).getId()).isEqualTo(withinRange.getId());
     }
 
     /**
@@ -147,6 +148,7 @@ class WorkLogMapperIntegrationTest {
         workLog.setTaskId(task.getId());
         workLog.setLogDate(logDate);
         workLog.setSummaryContent(title + "已完成");
+        workLog.setCommitHashes("2dfd4ff");
         workLog.setSpentMinutes(30);
         workLogMapper.insert(workLog);
         return workLog;

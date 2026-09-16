@@ -127,7 +127,7 @@ class TaskControllerTest {
 
         mockMvc.perform(patch("/api/v1/tasks/10/status")
                         .contentType("application/json")
-                        .content("{\"targetStatus\":\"COMPLETED\",\"completionLog\":{\"logDate\":\"2026-09-16\",\"summaryContent\":\"完成接口开发\",\"spentMinutes\":90}}"))
+                        .content("{\"targetStatus\":\"COMPLETED\",\"completionLog\":{\"logDate\":\"2026-09-16\",\"summaryContent\":\"完成接口开发\",\"commitHashes\":\"2dfd4ff\",\"spentMinutes\":90}}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("0"));
     }

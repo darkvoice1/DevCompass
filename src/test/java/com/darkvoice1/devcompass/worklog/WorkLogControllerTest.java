@@ -5,6 +5,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -13,6 +15,8 @@ import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
@@ -82,6 +86,23 @@ class WorkLogControllerTest {
     }
 
     /**
+     * 验证可下载 Markdown 格式的工作日志文件。
+     */
+    @Test
+    void shouldExportWorkLogs() throws Exception {
+        when(workLogService.exportWorkLogs(any())).thenReturn("# 工作日志\n");
+
+        mockMvc.perform(get("/api/v1/work-logs/export")
+                        .param("logDateFrom", "2026-09-01")
+                        .param("logDateTo", "2026-09-30"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.parseMediaType("text/markdown")))
+                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"work-logs-2026-09-01-to-2026-09-30.md\""))
+                .andExpect(content().string("# 工作日志\n"));
+    }
+
+    /**
      * 验证可以编辑工作日志。
      */
     @Test
@@ -90,7 +111,7 @@ class WorkLogControllerTest {
 
         mockMvc.perform(put("/api/v1/work-logs/20")
                         .contentType("application/json")
-                        .content("{\"logDate\":\"2026-09-16\",\"summaryContent\":\"完成接口开发\",\"spentMinutes\":90}"))
+                        .content("{\"logDate\":\"2026-09-16\",\"summaryContent\":\"完成接口开发\",\"commitHashes\":\"2dfd4ff\",\"spentMinutes\":90}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(20));
     }
@@ -102,9 +123,21 @@ class WorkLogControllerTest {
     void shouldRejectUpdateWithoutSummaryContent() throws Exception {
         mockMvc.perform(put("/api/v1/work-logs/20")
                         .contentType("application/json")
-                        .content("{\"logDate\":\"2026-09-16\",\"spentMinutes\":90}"))
+                        .content("{\"logDate\":\"2026-09-16\",\"commitHashes\":\"2dfd4ff\",\"spentMinutes\":90}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.data.summaryContent").value("完成总结不能为空"));
+    }
+
+    /**
+     * 验证编辑日志时拒绝格式错误的提交短哈希。
+     */
+    @Test
+    void shouldRejectInvalidCommitHashes() throws Exception {
+        mockMvc.perform(put("/api/v1/work-logs/20")
+                        .contentType("application/json")
+                        .content("{\"logDate\":\"2026-09-16\",\"summaryContent\":\"完成接口开发\",\"commitHashes\":\"invalid\",\"spentMinutes\":90}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.data.commitHashes").value("提交短哈希格式不正确"));
     }
 
     /**
@@ -116,6 +149,7 @@ class WorkLogControllerTest {
         response.setTaskId(10L);
         response.setLogDate(LocalDate.of(2026, 9, 16));
         response.setSummaryContent("完成接口开发");
+        response.setCommitHashes("2dfd4ff");
         response.setSpentMinutes(90);
         return response;
     }

@@ -17,6 +17,8 @@ import org.mockito.ArgumentCaptor;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.darkvoice1.devcompass.common.exception.BusinessException;
+import com.darkvoice1.devcompass.task.entity.Task;
+import com.darkvoice1.devcompass.task.repository.TaskMapper;
 import com.darkvoice1.devcompass.worklog.dto.WorkLogContentRequest;
 import com.darkvoice1.devcompass.worklog.dto.WorkLogDateRangeQueryRequest;
 import com.darkvoice1.devcompass.worklog.entity.WorkLog;
@@ -29,6 +31,7 @@ import com.darkvoice1.devcompass.worklog.service.WorkLogService;
 class WorkLogServiceTest {
 
     private WorkLogMapper workLogMapper;
+    private TaskMapper taskMapper;
     private WorkLogService workLogService;
 
     /**
@@ -37,7 +40,8 @@ class WorkLogServiceTest {
     @BeforeEach
     void setUp() {
         workLogMapper = mock(WorkLogMapper.class);
-        workLogService = new WorkLogService(workLogMapper);
+        taskMapper = mock(TaskMapper.class);
+        workLogService = new WorkLogService(workLogMapper, taskMapper);
     }
 
     /**
@@ -57,6 +61,7 @@ class WorkLogServiceTest {
         assertThat(response.getId()).isEqualTo(20L);
         assertThat(response.getTaskId()).isEqualTo(10L);
         assertThat(response.getSummaryContent()).isEqualTo("完成接口开发");
+        assertThat(response.getCommitHashes()).isEqualTo("2dfd4ff,ff072e1");
         assertThat(response.getSpentMinutes()).isEqualTo(90);
     }
 
@@ -128,6 +133,35 @@ class WorkLogServiceTest {
     }
 
     /**
+     * 验证可以按日期分组导出 Markdown 格式的工作日志。
+     */
+    @Test
+    void shouldExportWorkLogsAsMarkdown() {
+        WorkLog workLog = workLog(20L, 10L);
+        workLog.setLogDate(LocalDate.of(2026, 9, 16));
+        workLog.setPlanContent("完成日志导出");
+        workLog.setSummaryContent("已完成 Markdown 导出接口");
+        workLog.setCommitHashes("2dfd4ff,ff072e1");
+        workLog.setSpentMinutes(90);
+        workLog.setBlockerReason("暂无阻塞");
+        when(workLogMapper.selectList(any())).thenReturn(List.of(workLog));
+        Task task = new Task();
+        task.setTitle("实现日志导出");
+        when(taskMapper.selectById(10L)).thenReturn(task);
+
+        String markdown = workLogService.exportWorkLogs(dateRange(
+                LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30)));
+
+        assertThat(markdown).contains(
+                "# 工作日志",
+                "## 2026-09-16",
+                "### 任务 #10：实现日志导出",
+                "- 完成总结：已完成 Markdown 导出接口",
+                "- 提交记录：2dfd4ff,ff072e1",
+                "- 实际耗时：90 分钟");
+    }
+
+    /**
      * 验证编辑日志会更新其内容和更新时间。
      */
     @Test
@@ -152,6 +186,7 @@ class WorkLogServiceTest {
         request.setLogDate(LocalDate.of(2026, 9, 16));
         request.setPlanContent("完成接口");
         request.setSummaryContent("完成接口开发");
+        request.setCommitHashes("2dfd4ff, ff072e1");
         request.setSpentMinutes(90);
         return request;
     }
