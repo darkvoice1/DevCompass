@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
+import java.util.List;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -101,5 +103,52 @@ class WorkLogMapperIntegrationTest {
         duplicateWorkLog.setLogDate(LocalDate.of(2026, 9, 17));
         assertThatThrownBy(() -> workLogMapper.insert(duplicateWorkLog))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    /**
+     * 验证日志日期范围查询只返回范围内的记录。
+     */
+    @Test
+    void shouldQueryWorkLogsWithinDateRange() {
+        Project project = new Project();
+        project.setName("日期范围查询项目");
+        projectMapper.insert(project);
+
+        ProjectPhase phase = new ProjectPhase();
+        phase.setProjectId(project.getId());
+        phase.setName("日志查询阶段");
+        projectPhaseMapper.insert(phase);
+
+        WorkLog beforeRange = createWorkLog(project, phase, "范围前任务", LocalDate.of(2026, 10, 1));
+        WorkLog withinRange = createWorkLog(project, phase, "范围内任务", LocalDate.of(2026, 10, 2));
+        WorkLog afterRange = createWorkLog(project, phase, "范围后任务", LocalDate.of(2026, 10, 3));
+
+        List<WorkLog> logs = workLogMapper.selectList(new QueryWrapper<WorkLog>()
+                .ge("log_date", LocalDate.of(2026, 10, 2))
+                .le("log_date", LocalDate.of(2026, 10, 2))
+                .orderByDesc("log_date"));
+
+        assertThat(logs).extracting(WorkLog::getId).containsExactly(withinRange.getId());
+        assertThat(logs).extracting(WorkLog::getId)
+                .doesNotContain(beforeRange.getId(), afterRange.getId());
+    }
+
+    /**
+     * 创建指定日期的测试工作日志。
+     */
+    private WorkLog createWorkLog(Project project, ProjectPhase phase, String title, LocalDate logDate) {
+        Task task = new Task();
+        task.setProjectId(project.getId());
+        task.setPhaseId(phase.getId());
+        task.setTitle(title);
+        taskMapper.insert(task);
+
+        WorkLog workLog = new WorkLog();
+        workLog.setTaskId(task.getId());
+        workLog.setLogDate(logDate);
+        workLog.setSummaryContent(title + "已完成");
+        workLog.setSpentMinutes(30);
+        workLogMapper.insert(workLog);
+        return workLog;
     }
 }

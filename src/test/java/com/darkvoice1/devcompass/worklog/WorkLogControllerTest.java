@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,6 +55,30 @@ class WorkLogControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.taskId").value(10))
                 .andExpect(jsonPath("$.data.summaryContent").value("完成接口开发"));
+    }
+
+    /**
+     * 验证可以按日志日期范围查询工作日志。
+     */
+    @Test
+    void shouldQueryWorkLogsByDateRange() throws Exception {
+        when(workLogService.queryWorkLogsByDateRange(any())).thenReturn(List.of(response()));
+
+        mockMvc.perform(get("/api/v1/work-logs")
+                        .param("logDateFrom", "2026-09-01")
+                        .param("logDateTo", "2026-09-30"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].id").value(20));
+    }
+
+    /**
+     * 验证日期范围查询必须提供结束日期。
+     */
+    @Test
+    void shouldRejectDateRangeWithoutEndDate() throws Exception {
+        mockMvc.perform(get("/api/v1/work-logs").param("logDateFrom", "2026-09-01"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.data.logDateTo").value("日志结束日期不能为空"));
     }
 
     /**

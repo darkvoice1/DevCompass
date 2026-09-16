@@ -1,8 +1,11 @@
 package com.darkvoice1.devcompass.worklog.controller;
 
+import java.util.List;
+
 import jakarta.validation.Valid;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -11,11 +14,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.darkvoice1.devcompass.common.web.ApiResponse;
 import com.darkvoice1.devcompass.worklog.dto.WorkLogContentRequest;
+import com.darkvoice1.devcompass.worklog.dto.WorkLogDateRangeQueryRequest;
 import com.darkvoice1.devcompass.worklog.dto.WorkLogResponse;
 import com.darkvoice1.devcompass.worklog.service.WorkLogService;
 
 /**
- * 提供工作日志查看和编辑接口。
+ * 提供工作日志查询和编辑接口。
  */
 @RestController
 @RequestMapping("/api/v1/work-logs")
@@ -30,6 +34,18 @@ public class WorkLogController {
      */
     public WorkLogController(WorkLogService workLogService) {
         this.workLogService = workLogService;
+    }
+
+    /**
+     * 按日志日期范围查询工作日志。
+     *
+     * @param request 日期范围查询参数
+     * @return 工作日志列表
+     */
+    @GetMapping
+    public ApiResponse<List<WorkLogResponse>> queryWorkLogsByDateRange(
+            @Valid @ModelAttribute WorkLogDateRangeQueryRequest request) {
+        return ApiResponse.success(workLogService.queryWorkLogsByDateRange(request));
     }
 
     /**

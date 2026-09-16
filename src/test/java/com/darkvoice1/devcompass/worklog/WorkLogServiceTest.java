@@ -9,12 +9,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.darkvoice1.devcompass.common.exception.BusinessException;
 import com.darkvoice1.devcompass.worklog.dto.WorkLogContentRequest;
+import com.darkvoice1.devcompass.worklog.dto.WorkLogDateRangeQueryRequest;
 import com.darkvoice1.devcompass.worklog.entity.WorkLog;
 import com.darkvoice1.devcompass.worklog.repository.WorkLogMapper;
 import com.darkvoice1.devcompass.worklog.service.WorkLogService;
@@ -86,6 +90,44 @@ class WorkLogServiceTest {
     }
 
     /**
+     * 验证可按日期范围查询日志，并按最近日志优先排序。
+     */
+    @Test
+    void shouldQueryWorkLogsByDateRange() {
+        WorkLog latest = workLog(20L, 10L);
+        latest.setLogDate(LocalDate.of(2026, 9, 16));
+        WorkLog earlier = workLog(21L, 11L);
+        earlier.setLogDate(LocalDate.of(2026, 9, 15));
+        when(workLogMapper.selectList(any())).thenReturn(List.of(latest, earlier));
+
+        WorkLogDateRangeQueryRequest request = dateRange(
+                LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30));
+        var responses = workLogService.queryWorkLogsByDateRange(request);
+
+        assertThat(responses).extracting(response -> response.getId())
+                .containsExactly(20L, 21L);
+        ArgumentCaptor<QueryWrapper<WorkLog>> captor = ArgumentCaptor.captor();
+        verify(workLogMapper).selectList(captor.capture());
+        assertThat(captor.getValue().getSqlSegment())
+                .contains("log_date", "ORDER BY log_date DESC", "updated_at DESC", "id DESC");
+        assertThat(captor.getValue().getParamNameValuePairs().values())
+                .contains(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30));
+    }
+
+    /**
+     * 验证开始日期晚于结束日期时拒绝查询。
+     */
+    @Test
+    void shouldRejectInvalidWorkLogDateRange() {
+        WorkLogDateRangeQueryRequest request = dateRange(
+                LocalDate.of(2026, 9, 30), LocalDate.of(2026, 9, 1));
+
+        assertThatThrownBy(() -> workLogService.queryWorkLogsByDateRange(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("日志日期范围不合法");
+    }
+
+    /**
      * 验证编辑日志会更新其内容和更新时间。
      */
     @Test
@@ -122,5 +164,15 @@ class WorkLogServiceTest {
         workLog.setId(id);
         workLog.setTaskId(taskId);
         return workLog;
+    }
+
+    /**
+     * 创建测试用日期范围查询参数。
+     */
+    private WorkLogDateRangeQueryRequest dateRange(LocalDate from, LocalDate to) {
+        WorkLogDateRangeQueryRequest request = new WorkLogDateRangeQueryRequest();
+        request.setLogDateFrom(from);
+        request.setLogDateTo(to);
+        return request;
     }
 }

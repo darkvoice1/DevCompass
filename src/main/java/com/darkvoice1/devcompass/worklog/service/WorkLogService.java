@@ -1,6 +1,8 @@
 package com.darkvoice1.devcompass.worklog.service;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 
@@ -8,6 +10,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.darkvoice1.devcompass.common.exception.BusinessException;
 import com.darkvoice1.devcompass.common.exception.ErrorCode;
 import com.darkvoice1.devcompass.worklog.dto.WorkLogContentRequest;
+import com.darkvoice1.devcompass.worklog.dto.WorkLogDateRangeQueryRequest;
 import com.darkvoice1.devcompass.worklog.dto.WorkLogResponse;
 import com.darkvoice1.devcompass.worklog.entity.WorkLog;
 import com.darkvoice1.devcompass.worklog.repository.WorkLogMapper;
@@ -66,6 +69,25 @@ public class WorkLogService {
     }
 
     /**
+     * 按日志日期范围查询工作日志，并按最近日志优先返回。
+     *
+     * @param request 日期范围查询参数
+     * @return 工作日志列表
+     */
+    public List<WorkLogResponse> queryWorkLogsByDateRange(WorkLogDateRangeQueryRequest request) {
+        validateDateRange(request.getLogDateFrom(), request.getLogDateTo());
+        return workLogMapper.selectList(new QueryWrapper<WorkLog>()
+                .ge("log_date", request.getLogDateFrom())
+                .le("log_date", request.getLogDateTo())
+                .orderByDesc("log_date")
+                .orderByDesc("updated_at")
+                .orderByDesc("id"))
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    /**
      * 编辑已创建的工作日志。
      *
      * @param workLogId 工作日志主键
@@ -88,6 +110,15 @@ public class WorkLogService {
      */
     private WorkLog findByTaskId(Long taskId) {
         return workLogMapper.selectOne(new QueryWrapper<WorkLog>().eq("task_id", taskId));
+    }
+
+    /**
+     * 校验日期范围的起止顺序。
+     */
+    private void validateDateRange(LocalDate logDateFrom, LocalDate logDateTo) {
+        if (logDateFrom == null || logDateTo == null || logDateFrom.isAfter(logDateTo)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "日志日期范围不合法");
+        }
     }
 
     /**
