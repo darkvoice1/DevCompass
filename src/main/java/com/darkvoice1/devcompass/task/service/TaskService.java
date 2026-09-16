@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -32,6 +33,8 @@ import com.darkvoice1.devcompass.task.entity.Task;
 import com.darkvoice1.devcompass.task.entity.TaskPriority;
 import com.darkvoice1.devcompass.task.entity.TaskStatus;
 import com.darkvoice1.devcompass.task.repository.TaskMapper;
+import com.darkvoice1.devcompass.worklog.dto.WorkLogContentRequest;
+import com.darkvoice1.devcompass.worklog.service.WorkLogService;
 
 /**
  * 处理任务创建、编辑、状态变更和查询业务。
@@ -49,6 +52,7 @@ public class TaskService {
     private final TaskMapper taskMapper;
     private final ProjectMapper projectMapper;
     private final ProjectPhaseMapper projectPhaseMapper;
+    private final WorkLogService workLogService;
 
     /**
      * 创建任务服务。
@@ -56,12 +60,14 @@ public class TaskService {
      * @param taskMapper 任务数据访问对象
      * @param projectMapper 项目数据访问对象
      * @param projectPhaseMapper 项目阶段数据访问对象
+     * @param workLogService 工作日志业务服务
      */
     public TaskService(TaskMapper taskMapper, ProjectMapper projectMapper,
-            ProjectPhaseMapper projectPhaseMapper) {
+            ProjectPhaseMapper projectPhaseMapper, WorkLogService workLogService) {
         this.taskMapper = taskMapper;
         this.projectMapper = projectMapper;
         this.projectPhaseMapper = projectPhaseMapper;
+        this.workLogService = workLogService;
     }
 
     /**
@@ -113,6 +119,7 @@ public class TaskService {
      * @return 变更后的任务详情
      * @throws BusinessException 状态流转不合法或任务状态发生并发变化时抛出
      */
+    @Transactional
     public TaskDetailResponse changeTaskStatus(Long taskId, ChangeTaskStatusRequest request) {
         Task task = findTaskOrThrow(taskId);
         TaskStatus currentStatus = task.getStatus();
@@ -126,7 +133,12 @@ public class TaskService {
                     "任务状态不能从 " + currentStatus + " 流转到 " + targetStatus);
         }
 
+        validateCompletionLog(targetStatus, request.getCompletionLog());
+
         Instant updatedAt = Instant.now();
+        if (targetStatus == TaskStatus.COMPLETED) {
+            workLogService.saveCompletionLog(taskId, request.getCompletionLog());
+        }
         if (taskMapper.updateStatusIfCurrent(taskId, currentStatus, targetStatus, updatedAt) == 0) {
             throw new BusinessException(ErrorCode.BUSINESS_ERROR, "任务状态已发生变化，请重试");
         }
@@ -134,6 +146,18 @@ public class TaskService {
         task.setStatus(targetStatus);
         task.setUpdatedAt(updatedAt);
         return toResponse(task);
+    }
+
+    /**
+     * 校验任务完成时必须提交日志，其他状态变更不能携带日志。
+     */
+    private void validateCompletionLog(TaskStatus targetStatus, WorkLogContentRequest completionLog) {
+        if (targetStatus == TaskStatus.COMPLETED && completionLog == null) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "任务完成时必须填写工作日志");
+        }
+        if (targetStatus != TaskStatus.COMPLETED && completionLog != null) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "仅任务完成时可以填写工作日志");
+        }
     }
 
     /**

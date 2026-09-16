@@ -34,6 +34,8 @@ import com.darkvoice1.devcompass.task.entity.TaskPriority;
 import com.darkvoice1.devcompass.task.entity.TaskStatus;
 import com.darkvoice1.devcompass.task.repository.TaskMapper;
 import com.darkvoice1.devcompass.task.service.TaskService;
+import com.darkvoice1.devcompass.worklog.dto.WorkLogContentRequest;
+import com.darkvoice1.devcompass.worklog.service.WorkLogService;
 
 /**
  * 验证任务创建和编辑业务。
@@ -43,6 +45,7 @@ class TaskServiceTest {
     private TaskMapper taskMapper;
     private ProjectMapper projectMapper;
     private ProjectPhaseMapper projectPhaseMapper;
+    private WorkLogService workLogService;
     private TaskService taskService;
 
     /**
@@ -53,7 +56,8 @@ class TaskServiceTest {
         taskMapper = mock(TaskMapper.class);
         projectMapper = mock(ProjectMapper.class);
         projectPhaseMapper = mock(ProjectPhaseMapper.class);
-        taskService = new TaskService(taskMapper, projectMapper, projectPhaseMapper);
+        workLogService = mock(WorkLogService.class);
+        taskService = new TaskService(taskMapper, projectMapper, projectPhaseMapper, workLogService);
     }
 
     /**
@@ -127,6 +131,49 @@ class TaskServiceTest {
         assertThat(response.getUpdatedAt()).isNotNull();
         verify(taskMapper).updateStatusIfCurrent(
                 10L, TaskStatus.TODO, TaskStatus.IN_PROGRESS, response.getUpdatedAt());
+    }
+
+    /**
+     * 验证任务完成时必须同时填写工作日志。
+     */
+    @Test
+    void shouldRequireWorkLogWhenCompletingTask() {
+        Task task = task(10L, TaskStatus.IN_PROGRESS);
+        when(taskMapper.selectById(10L)).thenReturn(task);
+
+        ChangeTaskStatusRequest request = new ChangeTaskStatusRequest();
+        request.setTargetStatus(TaskStatus.COMPLETED);
+
+        assertThatThrownBy(() -> taskService.changeTaskStatus(10L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("任务完成时必须填写工作日志");
+        verify(workLogService, org.mockito.Mockito.never())
+                .saveCompletionLog(any(), any());
+        verify(taskMapper, org.mockito.Mockito.never())
+                .updateStatusIfCurrent(any(), any(), any(), any());
+    }
+
+    /**
+     * 验证任务完成时会保存工作日志并更新任务状态。
+     */
+    @Test
+    void shouldSaveWorkLogWhenCompletingTask() {
+        Task task = task(10L, TaskStatus.IN_PROGRESS);
+        when(taskMapper.selectById(10L)).thenReturn(task);
+        when(projectPhaseMapper.selectById(2L)).thenReturn(phase(2L, 1L, "开发实现"));
+        when(taskMapper.updateStatusIfCurrent(any(), any(), any(), any())).thenReturn(1);
+
+        WorkLogContentRequest completionLog = completionLog();
+        ChangeTaskStatusRequest request = new ChangeTaskStatusRequest();
+        request.setTargetStatus(TaskStatus.COMPLETED);
+        request.setCompletionLog(completionLog);
+
+        var response = taskService.changeTaskStatus(10L, request);
+
+        assertThat(response.getStatus()).isEqualTo(TaskStatus.COMPLETED);
+        verify(workLogService).saveCompletionLog(10L, completionLog);
+        verify(taskMapper).updateStatusIfCurrent(
+                10L, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, response.getUpdatedAt());
     }
 
     /**
@@ -488,6 +535,17 @@ class TaskServiceTest {
         task.setStatus(status);
         task.setPriority(TaskPriority.MEDIUM);
         return task;
+    }
+
+    /**
+     * 创建用于测试的任务完成日志。
+     */
+    private WorkLogContentRequest completionLog() {
+        WorkLogContentRequest request = new WorkLogContentRequest();
+        request.setLogDate(LocalDate.of(2026, 9, 16));
+        request.setSummaryContent("已完成任务");
+        request.setSpentMinutes(60);
+        return request;
     }
 
 }

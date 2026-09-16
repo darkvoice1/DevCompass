@@ -119,6 +119,20 @@ class TaskControllerTest {
     }
 
     /**
+     * 验证任务完成请求可以携带工作日志。
+     */
+    @Test
+    void shouldCompleteTaskWithWorkLog() throws Exception {
+        when(taskService.changeTaskStatus(any(), any())).thenReturn(taskResponse());
+
+        mockMvc.perform(patch("/api/v1/tasks/10/status")
+                        .contentType("application/json")
+                        .content("{\"targetStatus\":\"COMPLETED\",\"completionLog\":{\"logDate\":\"2026-09-16\",\"summaryContent\":\"完成接口开发\",\"spentMinutes\":90}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("0"));
+    }
+
+    /**
      * 验证状态变更请求必须提供目标状态。
      */
     @Test
