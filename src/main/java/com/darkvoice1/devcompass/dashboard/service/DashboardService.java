@@ -9,6 +9,7 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 
 import com.darkvoice1.devcompass.dashboard.dto.DashboardOverviewResponse;
+import com.darkvoice1.devcompass.dashboard.dto.DashboardProjectQueryRequest;
 import com.darkvoice1.devcompass.dashboard.dto.DashboardProjectResponse;
 import com.darkvoice1.devcompass.project.entity.ProgressMode;
 import com.darkvoice1.devcompass.project.entity.Project;
@@ -35,10 +36,12 @@ public class DashboardService {
     /**
      * 查询未归档项目的数量、状态分布和项目摘要。
      *
+     * @param request 项目筛选参数
      * @return 仪表盘聚合结果
      */
-    public DashboardOverviewResponse getProjectOverview() {
-        List<Project> projects = projectMapper.selectDashboardProjects();
+    public DashboardOverviewResponse getProjectOverview(DashboardProjectQueryRequest request) {
+        List<Project> projects = projectMapper.selectDashboardProjects(
+                request.getStatus(), normalizeTag(request.getTag()), request.getActiveWithinDays());
         Map<ProjectStatus, Long> statusDistribution = createEmptyStatusDistribution();
         List<DashboardProjectResponse> projectResponses = new ArrayList<>(projects.size());
         for (Project project : projects) {
@@ -62,6 +65,13 @@ public class DashboardService {
         Map<ProjectStatus, Long> distribution = new EnumMap<>(ProjectStatus.class);
         Arrays.stream(ProjectStatus.values()).forEach(status -> distribution.put(status, 0L));
         return distribution;
+    }
+
+    /**
+     * 清理可选标签两侧的空白，空白标签按未筛选处理。
+     */
+    private String normalizeTag(String tag) {
+        return tag == null || tag.isBlank() ? null : tag.trim();
     }
 
     /**

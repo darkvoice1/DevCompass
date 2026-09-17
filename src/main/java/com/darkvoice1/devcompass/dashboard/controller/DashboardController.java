@@ -1,11 +1,15 @@
 package com.darkvoice1.devcompass.dashboard.controller;
 
+import jakarta.validation.Valid;
+
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.darkvoice1.devcompass.common.web.ApiResponse;
 import com.darkvoice1.devcompass.dashboard.dto.DashboardOverviewResponse;
+import com.darkvoice1.devcompass.dashboard.dto.DashboardProjectQueryRequest;
 import com.darkvoice1.devcompass.dashboard.service.DashboardService;
 
 /**
@@ -29,10 +33,12 @@ public class DashboardController {
     /**
      * 查询多项目仪表盘摘要。
      *
+     * @param request 项目筛选参数
      * @return 仪表盘聚合结果
      */
     @GetMapping("/projects")
-    public ApiResponse<DashboardOverviewResponse> getProjectOverview() {
-        return ApiResponse.success(dashboardService.getProjectOverview());
+    public ApiResponse<DashboardOverviewResponse> getProjectOverview(
+            @Valid @ModelAttribute DashboardProjectQueryRequest request) {
+        return ApiResponse.success(dashboardService.getProjectOverview(request));
     }
 }

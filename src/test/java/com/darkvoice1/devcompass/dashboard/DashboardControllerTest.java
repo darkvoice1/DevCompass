@@ -1,6 +1,9 @@
 package com.darkvoice1.devcompass.dashboard;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -12,11 +15,15 @@ import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
+import com.darkvoice1.devcompass.common.exception.GlobalExceptionHandler;
 import com.darkvoice1.devcompass.dashboard.controller.DashboardController;
 import com.darkvoice1.devcompass.dashboard.dto.DashboardOverviewResponse;
+import com.darkvoice1.devcompass.dashboard.dto.DashboardProjectQueryRequest;
 import com.darkvoice1.devcompass.dashboard.dto.DashboardProjectResponse;
 import com.darkvoice1.devcompass.dashboard.service.DashboardService;
 import com.darkvoice1.devcompass.project.entity.ProjectStatus;
@@ -36,7 +43,12 @@ class DashboardControllerTest {
     @BeforeEach
     void setUp() {
         dashboardService = mock(DashboardService.class);
-        mockMvc = MockMvcBuilders.standaloneSetup(new DashboardController(dashboardService)).build();
+        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        validator.afterPropertiesSet();
+        mockMvc = MockMvcBuilders.standaloneSetup(new DashboardController(dashboardService))
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .setValidator(validator)
+                .build();
     }
 
     /**
@@ -44,7 +56,7 @@ class DashboardControllerTest {
      */
     @Test
     void shouldGetProjectOverview() throws Exception {
-        when(dashboardService.getProjectOverview()).thenReturn(overviewResponse());
+        when(dashboardService.getProjectOverview(any())).thenReturn(overviewResponse());
 
         mockMvc.perform(get("/api/v1/dashboard/projects"))
                 .andExpect(status().isOk())
@@ -57,6 +69,40 @@ class DashboardControllerTest {
                 .andExpect(jsonPath("$.data.projects[0].progress").value(40))
                 .andExpect(jsonPath("$.data.projects[0].updatedAt")
                         .value("2026-09-17T08:00:00Z"));
+    }
+
+    /**
+     * 验证状态、标签和最近活跃天数可以绑定为筛选参数。
+     */
+    @Test
+    void shouldBindProjectFilters() throws Exception {
+        when(dashboardService.getProjectOverview(any())).thenReturn(overviewResponse());
+
+        mockMvc.perform(get("/api/v1/dashboard/projects")
+                        .param("status", "IN_PROGRESS")
+                        .param("tag", "后端")
+                        .param("activeWithinDays", "30"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<DashboardProjectQueryRequest> captor =
+                ArgumentCaptor.forClass(DashboardProjectQueryRequest.class);
+        verify(dashboardService).getProjectOverview(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(ProjectStatus.IN_PROGRESS);
+        assertThat(captor.getValue().getTag()).isEqualTo("后端");
+        assertThat(captor.getValue().getActiveWithinDays()).isEqualTo(30);
+    }
+
+    /**
+     * 验证最近活跃天数不能小于一天。
+     */
+    @Test
+    void shouldRejectInvalidActiveWithinDays() throws Exception {
+        mockMvc.perform(get("/api/v1/dashboard/projects")
+                        .param("activeWithinDays", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.data.activeWithinDays")
+                        .value("最近活跃天数必须大于等于1"));
     }
 
     /**

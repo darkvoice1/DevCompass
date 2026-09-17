@@ -12,6 +12,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.darkvoice1.devcompass.dashboard.dto.DashboardProjectQueryRequest;
 import com.darkvoice1.devcompass.dashboard.service.DashboardService;
 import com.darkvoice1.devcompass.project.entity.ProgressMode;
 import com.darkvoice1.devcompass.project.entity.Project;
@@ -45,9 +46,10 @@ class DashboardServiceTest {
                 ProgressMode.AUTO, 40, null, Instant.parse("2026-09-17T08:00:00Z"));
         Project manualProject = project(2L, "个人博客", ProjectStatus.PAUSED,
                 ProgressMode.MANUAL, 80, 60, Instant.parse("2026-09-16T08:00:00Z"));
-        when(projectMapper.selectDashboardProjects()).thenReturn(List.of(automaticProject, manualProject));
+        when(projectMapper.selectDashboardProjects(null, null, null))
+                .thenReturn(List.of(automaticProject, manualProject));
 
-        var response = dashboardService.getProjectOverview();
+        var response = dashboardService.getProjectOverview(new DashboardProjectQueryRequest());
 
         assertThat(response.getTotalProjects()).isEqualTo(2);
         assertThat(response.getStatusDistribution())
@@ -59,7 +61,7 @@ class DashboardServiceTest {
                 .containsExactly("研发罗盘", "个人博客");
         assertThat(response.getProjects()).extracting(project -> project.getProgress())
                 .containsExactly(40, 60);
-        verify(projectMapper).selectDashboardProjects();
+        verify(projectMapper).selectDashboardProjects(null, null, null);
         verifyNoMoreInteractions(projectMapper);
     }
 
@@ -68,14 +70,32 @@ class DashboardServiceTest {
      */
     @Test
     void shouldReturnEmptyOverviewWhenNoProjectExists() {
-        when(projectMapper.selectDashboardProjects()).thenReturn(List.of());
+        when(projectMapper.selectDashboardProjects(null, null, null)).thenReturn(List.of());
 
-        var response = dashboardService.getProjectOverview();
+        var response = dashboardService.getProjectOverview(new DashboardProjectQueryRequest());
 
         assertThat(response.getTotalProjects()).isZero();
         assertThat(response.getProjects()).isEmpty();
         assertThat(response.getStatusDistribution()).hasSize(ProjectStatus.values().length)
                 .allSatisfy((status, count) -> assertThat(count).isZero());
+    }
+
+    /**
+     * 验证筛选条件会传给单次项目查询，并清理标签两侧空白。
+     */
+    @Test
+    void shouldPassNormalizedFiltersToProjectQuery() {
+        DashboardProjectQueryRequest request = new DashboardProjectQueryRequest();
+        request.setStatus(ProjectStatus.IN_PROGRESS);
+        request.setTag("  后端  ");
+        request.setActiveWithinDays(30);
+        when(projectMapper.selectDashboardProjects(ProjectStatus.IN_PROGRESS, "后端", 30))
+                .thenReturn(List.of());
+
+        dashboardService.getProjectOverview(request);
+
+        verify(projectMapper).selectDashboardProjects(ProjectStatus.IN_PROGRESS, "后端", 30);
+        verifyNoMoreInteractions(projectMapper);
     }
 
     /**
