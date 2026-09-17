@@ -183,7 +183,7 @@ public class WorkLogService {
      */
     private String normalizeCommitHashes(String commitHashes) {
         return Arrays.stream(commitHashes.split(","))
-                .map(String::trim)
+                .map(commitHash -> commitHash.trim())
                 .collect(Collectors.joining(","));
     }
 
