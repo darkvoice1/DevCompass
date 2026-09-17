@@ -1,5 +1,7 @@
 package com.darkvoice1.devcompass.project.repository;
 
+import java.util.List;
+
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -13,6 +15,19 @@ import com.darkvoice1.devcompass.project.entity.Project;
  */
 @Mapper
 public interface ProjectMapper extends BaseMapper<Project> {
+
+    /**
+     * 查询仪表盘需要展示的未归档项目，并按最近更新时间排序。
+     *
+     * @return 仪表盘项目列表
+     */
+    @Select("""
+            SELECT id, name, status, progress_mode, auto_progress, manual_progress, tags, updated_at
+            FROM project
+            WHERE archived = FALSE AND deleted_at IS NULL
+            ORDER BY updated_at DESC, id DESC
+            """)
+    List<Project> selectDashboardProjects();
 
     /**
      * 查询指定的已软删除项目。

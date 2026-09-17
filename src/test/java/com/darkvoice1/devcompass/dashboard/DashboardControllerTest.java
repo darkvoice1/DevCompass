@@ -1,0 +1,84 @@
+package com.darkvoice1.devcompass.dashboard;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import com.darkvoice1.devcompass.dashboard.controller.DashboardController;
+import com.darkvoice1.devcompass.dashboard.dto.DashboardOverviewResponse;
+import com.darkvoice1.devcompass.dashboard.dto.DashboardProjectResponse;
+import com.darkvoice1.devcompass.dashboard.service.DashboardService;
+import com.darkvoice1.devcompass.project.entity.ProjectStatus;
+
+/**
+ * 验证多项目仪表盘查询接口。
+ */
+class DashboardControllerTest {
+
+    private DashboardService dashboardService;
+
+    private MockMvc mockMvc;
+
+    /**
+     * 初始化仪表盘控制器测试环境。
+     */
+    @BeforeEach
+    void setUp() {
+        dashboardService = mock(DashboardService.class);
+        mockMvc = MockMvcBuilders.standaloneSetup(new DashboardController(dashboardService)).build();
+    }
+
+    /**
+     * 验证接口返回项目总数、状态分布和项目摘要。
+     */
+    @Test
+    void shouldGetProjectOverview() throws Exception {
+        when(dashboardService.getProjectOverview()).thenReturn(overviewResponse());
+
+        mockMvc.perform(get("/api/v1/dashboard/projects"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("0"))
+                .andExpect(jsonPath("$.data.totalProjects").value(1))
+                .andExpect(jsonPath("$.data.statusDistribution.PLANNED").value(0))
+                .andExpect(jsonPath("$.data.statusDistribution.IN_PROGRESS").value(1))
+                .andExpect(jsonPath("$.data.projects[0].id").value(1))
+                .andExpect(jsonPath("$.data.projects[0].name").value("研发罗盘"))
+                .andExpect(jsonPath("$.data.projects[0].progress").value(40))
+                .andExpect(jsonPath("$.data.projects[0].updatedAt")
+                        .value("2026-09-17T08:00:00Z"));
+    }
+
+    /**
+     * 创建测试用仪表盘响应。
+     */
+    private DashboardOverviewResponse overviewResponse() {
+        DashboardProjectResponse project = new DashboardProjectResponse();
+        project.setId(1L);
+        project.setName("研发罗盘");
+        project.setStatus(ProjectStatus.IN_PROGRESS);
+        project.setProgress(40);
+        project.setTags("后端,学习项目");
+        project.setUpdatedAt(Instant.parse("2026-09-17T08:00:00Z"));
+
+        DashboardOverviewResponse response = new DashboardOverviewResponse();
+        response.setTotalProjects(1);
+        response.setStatusDistribution(Map.of(
+                ProjectStatus.PLANNED, 0L,
+                ProjectStatus.IN_PROGRESS, 1L,
+                ProjectStatus.COMPLETED, 0L,
+                ProjectStatus.PAUSED, 0L));
+        response.setProjects(List.of(project));
+        return response;
+    }
+}
