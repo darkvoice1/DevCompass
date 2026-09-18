@@ -62,4 +62,24 @@ class CoreIndexesIntegrationTest {
                 "idx_task_active_project_phase_due",
                 "idx_task_active_project_status_priority_due");
     }
+
+    /**
+     * 验证 V13 迁移创建仪表盘聚合查询索引。
+     */
+    @Test
+    void shouldCreateDashboardQueryIndexes() {
+        List<String> indexes = jdbcTemplate.queryForList(
+                "SELECT indexname FROM pg_indexes "
+                        + "WHERE schemaname = 'public' AND indexname IN "
+                        + "('idx_project_active_unarchived_status', "
+                        + "'idx_task_active_project_updated', "
+                        + "'idx_work_log_active_task_updated') "
+                        + "ORDER BY indexname",
+                String.class);
+
+        assertThat(indexes).containsExactly(
+                "idx_project_active_unarchived_status",
+                "idx_task_active_project_updated",
+                "idx_work_log_active_task_updated");
+    }
 }

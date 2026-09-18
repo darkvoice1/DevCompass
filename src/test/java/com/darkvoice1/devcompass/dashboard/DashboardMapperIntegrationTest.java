@@ -135,6 +135,26 @@ class DashboardMapperIntegrationTest {
     }
 
     /**
+     * 验证已归档和已软删除项目不会出现在仪表盘查询结果中。
+     */
+    @Test
+    void shouldExcludeArchivedAndSoftDeletedProjects() {
+        Project visibleProject = createProject("可见项目", ProjectStatus.IN_PROGRESS, "仪表盘验证");
+        Project archivedProject = createProject("归档项目", ProjectStatus.IN_PROGRESS, "仪表盘验证");
+        archivedProject.setArchived(true);
+        projectMapper.updateById(archivedProject);
+        Project deletedProject = createProject("删除项目", ProjectStatus.IN_PROGRESS, "仪表盘验证");
+        projectMapper.softDeleteById(deletedProject.getId());
+
+        List<DashboardProjectRow> projects = projectMapper.selectDashboardProjects(
+                null, "仪表盘验证", null, DashboardService.DUE_SOON_DAYS);
+
+        assertThat(projects).extracting(row -> row.getId())
+                .contains(visibleProject.getId())
+                .doesNotContain(archivedProject.getId(), deletedProject.getId());
+    }
+
+    /**
      * 创建测试项目。
      */
     private Project createProject(String name, ProjectStatus status, String tags) {

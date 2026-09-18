@@ -46,3 +46,13 @@ Content-Type: application/json
   "name": "DevCompass"
 }
 ```
+
+## 多项目仪表盘
+
+```text
+GET /api/v1/dashboard/projects
+```
+
+可选查询参数：`status`、`tag`、`activeWithinDays`。
+
+一次请求返回项目总数、状态分布、健康度分布和项目摘要。详细规则见 [dashboard.md](dashboard.md)。
