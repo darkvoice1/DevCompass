@@ -1,0 +1,10 @@
+{
+  "properties": [
+    {
+      "name": "devcompass.timezone",
+      "type": "java.lang.String",
+      "description": "计算日期边界时使用的时区。",
+      "defaultValue": "Asia/Shanghai"
+    }
+  ]
+}
