@@ -1,5 +1,6 @@
 package com.darkvoice1.devcompass.project.repository;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import org.apache.ibatis.annotations.Mapper;
@@ -9,6 +10,7 @@ import org.apache.ibatis.annotations.Update;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.darkvoice1.devcompass.dashboard.dto.DashboardProjectRow;
+import com.darkvoice1.devcompass.dashboard.dto.FocusListItemResponse;
 import com.darkvoice1.devcompass.project.entity.Project;
 import com.darkvoice1.devcompass.project.entity.ProjectStatus;
 
@@ -102,6 +104,28 @@ public interface ProjectMapper extends BaseMapper<Project> {
             @Param("tag") String tag,
             @Param("activeWithinDays") Integer activeWithinDays,
             @Param("dueSoonDays") int dueSoonDays);
+
+    /**
+     * 查询目标日期已过且尚未完成的未归档项目。
+     *
+     * @param today 应用时区下的今天
+     * @return 项目延期清单项
+     */
+    @Select("""
+            <script>
+            SELECT CAST(NULL AS BIGINT) AS task_id, p.name AS title, CAST(NULL AS VARCHAR) AS status,
+                   p.target_date AS due_date, p.id AS project_id, p.name AS project_name,
+                   'PROJECT' AS item_kind
+            FROM project p
+            WHERE p.deleted_at IS NULL
+              AND p.archived = FALSE
+              AND p.status != 'COMPLETED'
+              AND p.target_date IS NOT NULL
+              AND p.target_date &lt; #{today}
+            ORDER BY p.target_date ASC, p.id ASC
+            </script>
+            """)
+    List<FocusListItemResponse> selectOverdueFocusProjects(@Param("today") LocalDate today);
 
     /**
      * 查询指定的已软删除项目。

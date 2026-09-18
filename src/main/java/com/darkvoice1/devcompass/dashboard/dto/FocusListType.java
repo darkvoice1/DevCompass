@@ -6,5 +6,11 @@ package com.darkvoice1.devcompass.dashboard.dto;
 public enum FocusListType {
 
     /** 本周到期的未完成任务。 */
-    THIS_WEEK
+    THIS_WEEK,
+
+    /** 已逾期的任务，以及目标日期已过的未完成项目。 */
+    OVERDUE,
+
+    /** 今天起 7 天内到期的未完成任务。 */
+    DUE_SOON
 }

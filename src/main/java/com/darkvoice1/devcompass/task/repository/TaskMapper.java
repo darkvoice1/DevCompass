@@ -28,8 +28,9 @@ public interface TaskMapper extends BaseMapper<Task> {
      * @return 可跳转到项目和任务详情的清单项
      */
     @Select("""
+            <script>
             SELECT t.id AS task_id, t.title, t.status, t.due_date,
-                   t.project_id, p.name AS project_name
+                   t.project_id, p.name AS project_name, 'TASK' AS item_kind
             FROM task t
             INNER JOIN project p ON p.id = t.project_id
             WHERE t.deleted_at IS NULL
@@ -37,9 +38,12 @@ public interface TaskMapper extends BaseMapper<Task> {
               AND p.archived = FALSE
               AND t.status NOT IN ('COMPLETED', 'CANCELLED')
               AND t.due_date IS NOT NULL
-              AND t.due_date >= #{fromDate}
-              AND t.due_date <= #{toDate}
+              AND t.due_date &lt;= #{toDate}
+              <if test="fromDate != null">
+                AND t.due_date &gt;= #{fromDate}
+              </if>
             ORDER BY t.due_date ASC, t.id ASC
+            </script>
             """)
     List<FocusListItemResponse> selectFocusListTasks(
             @Param("fromDate") LocalDate fromDate,

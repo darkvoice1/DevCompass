@@ -18,7 +18,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import com.darkvoice1.devcompass.Application;
+import com.darkvoice1.devcompass.dashboard.dto.FocusListItemKind;
 import com.darkvoice1.devcompass.dashboard.dto.FocusListItemResponse;
+import com.darkvoice1.devcompass.dashboard.service.DashboardService;
 import com.darkvoice1.devcompass.project.entity.ProgressMode;
 import com.darkvoice1.devcompass.project.entity.Project;
 import com.darkvoice1.devcompass.project.entity.ProjectPhase;
@@ -70,7 +72,7 @@ class FocusListMapperIntegrationTest {
         LocalDate monday = today.with(DayOfWeek.MONDAY);
         LocalDate sunday = today.with(DayOfWeek.SUNDAY);
 
-        Project project = createProject("本周清单项目", false);
+        Project project = createProject("本周清单项目", ProjectStatus.IN_PROGRESS, null, false);
         ProjectPhase phase = createPhase(project.getId());
         Task todayTask = createTask(project.getId(), phase.getId(), "今天任务",
                 TaskStatus.TODO, today);
@@ -87,7 +89,7 @@ class FocusListMapperIntegrationTest {
                 TaskStatus.TODO, today);
         taskMapper.softDeleteById(deletedTask.getId());
 
-        Project archivedProject = createProject("归档清单项目", true);
+        Project archivedProject = createProject("归档清单项目", ProjectStatus.IN_PROGRESS, null, true);
         ProjectPhase archivedPhase = createPhase(archivedProject.getId());
         createTask(archivedProject.getId(), archivedPhase.getId(), "归档项目任务",
                 TaskStatus.TODO, today);
@@ -101,19 +103,87 @@ class FocusListMapperIntegrationTest {
                 .contains("今天任务", "周一任务", "周日任务")
                 .doesNotContain("上周任务", "下周任务", "已完成任务", "已取消任务",
                         "没有截止日期", "已删除任务", "归档项目任务");
-        assertThat(items).extracting(item -> item.getProjectName()).containsOnly("本周清单项目");
-        assertThat(items).extracting(item -> item.getProjectId()).containsOnly(project.getId());
+        assertThat(items.stream()
+                .filter(item -> project.getId().equals(item.getProjectId()))
+                .toList()).extracting(item -> item.getItemKind())
+                .containsOnly(FocusListItemKind.TASK);
+    }
+
+    /**
+     * 验证逾期清单包含昨天的任务和目标日期已过的项目，不包含今天的任务和已完成项目。
+     */
+    @Test
+    void shouldSelectOverdueTasksAndDelayedProjects() {
+        LocalDate today = LocalDate.now(ZONE);
+        LocalDate yesterday = today.minusDays(1);
+
+        Project project = createProject("逾期清单项目", ProjectStatus.IN_PROGRESS, yesterday, false);
+        ProjectPhase phase = createPhase(project.getId());
+        Task overdueTask = createTask(project.getId(), phase.getId(), "逾期任务",
+                TaskStatus.TODO, yesterday);
+        createTask(project.getId(), phase.getId(), "今天任务", TaskStatus.TODO, today);
+        createTask(project.getId(), phase.getId(), "已完成逾期任务", TaskStatus.COMPLETED, yesterday);
+
+        Project delayedProject = createProject("目标日期已过项目", ProjectStatus.IN_PROGRESS,
+                yesterday, false);
+        createProject("已完成但仍过期项目", ProjectStatus.COMPLETED, yesterday, false);
+        createProject("归档延期项目", ProjectStatus.IN_PROGRESS, yesterday, true);
+
+        List<FocusListItemResponse> overdueTasks = taskMapper.selectFocusListTasks(null, yesterday);
+        List<FocusListItemResponse> overdueProjects = projectMapper.selectOverdueFocusProjects(today);
+
+        assertThat(overdueTasks).extracting(item -> item.getTaskId()).contains(overdueTask.getId());
+        assertThat(overdueTasks).extracting(item -> item.getTitle())
+                .contains("逾期任务")
+                .doesNotContain("今天任务", "已完成逾期任务");
+        assertThat(overdueProjects).extracting(item -> item.getProjectId())
+                .contains(project.getId(), delayedProject.getId());
+        assertThat(overdueProjects).extracting(item -> item.getTitle())
+                .contains("逾期清单项目", "目标日期已过项目")
+                .doesNotContain("已完成但仍过期项目", "归档延期项目");
+        assertThat(overdueProjects).extracting(item -> item.getItemKind())
+                .containsOnly(FocusListItemKind.PROJECT);
+        assertThat(overdueProjects).allSatisfy(item -> assertThat(item.getTaskId()).isNull());
+    }
+
+    /**
+     * 验证即将到期清单包含今天和第 7 天，不包含昨天和第 8 天。
+     */
+    @Test
+    void shouldSelectDueSoonTasksWithinSevenDays() {
+        LocalDate today = LocalDate.now(ZONE);
+        LocalDate daySeven = today.plusDays(DashboardService.DUE_SOON_DAYS);
+        LocalDate dayEight = daySeven.plusDays(1);
+
+        Project project = createProject("即将到期项目", ProjectStatus.IN_PROGRESS, null, false);
+        ProjectPhase phase = createPhase(project.getId());
+        Task todayTask = createTask(project.getId(), phase.getId(), "今天到期",
+                TaskStatus.TODO, today);
+        Task daySevenTask = createTask(project.getId(), phase.getId(), "第七天到期",
+                TaskStatus.IN_PROGRESS, daySeven);
+        createTask(project.getId(), phase.getId(), "昨天到期", TaskStatus.TODO, today.minusDays(1));
+        createTask(project.getId(), phase.getId(), "第八天到期", TaskStatus.TODO, dayEight);
+
+        List<FocusListItemResponse> items = taskMapper.selectFocusListTasks(today, daySeven);
+
+        assertThat(items).extracting(item -> item.getTaskId())
+                .contains(todayTask.getId(), daySevenTask.getId());
+        assertThat(items).extracting(item -> item.getTitle())
+                .contains("今天到期", "第七天到期")
+                .doesNotContain("昨天到期", "第八天到期");
     }
 
     /**
      * 创建测试项目。
      */
-    private Project createProject(String name, boolean archived) {
+    private Project createProject(String name, ProjectStatus status, LocalDate targetDate,
+            boolean archived) {
         Project project = new Project();
         project.setName(name);
-        project.setStatus(ProjectStatus.IN_PROGRESS);
+        project.setStatus(status);
         project.setProgressMode(ProgressMode.AUTO);
         project.setAutoProgress(20);
+        project.setTargetDate(targetDate);
         project.setArchived(archived);
         projectMapper.insert(project);
         return project;

@@ -5,9 +5,11 @@ import java.time.LocalDate;
 import com.darkvoice1.devcompass.task.entity.TaskStatus;
 
 /**
- * 首页焦点清单中的一条任务。
+ * 首页焦点清单中的一条记录，可能是任务或延期项目。
  */
 public class FocusListItemResponse {
+
+    private FocusListItemKind itemKind;
 
     private Long taskId;
 
@@ -20,6 +22,14 @@ public class FocusListItemResponse {
     private Long projectId;
 
     private String projectName;
+
+    public FocusListItemKind getItemKind() {
+        return itemKind;
+    }
+
+    public void setItemKind(FocusListItemKind itemKind) {
+        this.itemKind = itemKind;
+    }
 
     public Long getTaskId() {
         return taskId;
