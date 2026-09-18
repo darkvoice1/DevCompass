@@ -20,6 +20,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import com.darkvoice1.devcompass.Application;
+import com.darkvoice1.devcompass.dashboard.dto.DashboardProjectRow;
+import com.darkvoice1.devcompass.dashboard.service.DashboardService;
 import com.darkvoice1.devcompass.project.entity.ProgressMode;
 import com.darkvoice1.devcompass.project.entity.Project;
 import com.darkvoice1.devcompass.project.entity.ProjectPhase;
@@ -27,6 +29,7 @@ import com.darkvoice1.devcompass.project.entity.ProjectStatus;
 import com.darkvoice1.devcompass.project.repository.ProjectMapper;
 import com.darkvoice1.devcompass.project.repository.ProjectPhaseMapper;
 import com.darkvoice1.devcompass.task.entity.Task;
+import com.darkvoice1.devcompass.task.entity.TaskStatus;
 import com.darkvoice1.devcompass.task.repository.TaskMapper;
 import com.darkvoice1.devcompass.worklog.entity.WorkLog;
 import com.darkvoice1.devcompass.worklog.repository.WorkLogMapper;
@@ -86,14 +89,49 @@ class DashboardMapperIntegrationTest {
         jdbcTemplate.update("UPDATE work_log SET updated_at = ? WHERE id = ?",
                 Timestamp.from(recentUpdatedAt), workLog.getId());
 
-        List<Project> matchingProjects = projectMapper.selectDashboardProjects(
-                ProjectStatus.IN_PROGRESS, "后端", 30);
+        List<DashboardProjectRow> matchingProjects = projectMapper.selectDashboardProjects(
+                ProjectStatus.IN_PROGRESS, "后端", 30, DashboardService.DUE_SOON_DAYS);
 
         assertThat(matchingProjects).hasSize(1);
         assertThat(matchingProjects.get(0).getId()).isEqualTo(project.getId());
         assertThat(matchingProjects.get(0).getUpdatedAt()).isEqualTo(recentUpdatedAt);
-        assertThat(projectMapper.selectDashboardProjects(ProjectStatus.IN_PROGRESS, "后", 30)).isEmpty();
-        assertThat(projectMapper.selectDashboardProjects(ProjectStatus.IN_PROGRESS, "后端", 1)).isEmpty();
+        assertThat(projectMapper.selectDashboardProjects(
+                ProjectStatus.IN_PROGRESS, "后", 30, DashboardService.DUE_SOON_DAYS)).isEmpty();
+        assertThat(projectMapper.selectDashboardProjects(
+                ProjectStatus.IN_PROGRESS, "后端", 1, DashboardService.DUE_SOON_DAYS)).isEmpty();
+    }
+
+    /**
+     * 验证逾期和即将到期任务会计入健康度统计，已完成、已取消和已删除任务不计入。
+     */
+    @Test
+    void shouldCountOverdueAndDueSoonTasksForHealth() {
+        Project project = createProject("健康度项目", ProjectStatus.IN_PROGRESS, "健康度");
+        ProjectPhase phase = createPhase(project.getId());
+        createTask(project.getId(), phase.getId(), "逾期任务", TaskStatus.TODO,
+                LocalDate.now().minusDays(2));
+        createTask(project.getId(), phase.getId(), "即将到期任务", TaskStatus.IN_PROGRESS,
+                LocalDate.now().plusDays(1));
+        createTask(project.getId(), phase.getId(), "已完成逾期任务", TaskStatus.COMPLETED,
+                LocalDate.now().minusDays(2));
+        createTask(project.getId(), phase.getId(), "已取消逾期任务", TaskStatus.CANCELLED,
+                LocalDate.now().minusDays(2));
+        createTask(project.getId(), phase.getId(), "没有截止日期", TaskStatus.TODO, null);
+        Task deletedTask = createTask(project.getId(), phase.getId(), "已删除逾期任务",
+                TaskStatus.TODO, LocalDate.now().minusDays(2));
+        taskMapper.softDeleteById(deletedTask.getId());
+
+        List<DashboardProjectRow> projects = projectMapper.selectDashboardProjects(
+                null, null, null, DashboardService.DUE_SOON_DAYS);
+
+        assertThat(projects).extracting(row -> row.getId()).contains(project.getId());
+        DashboardProjectRow matchingProject = projects.stream()
+                .filter(row -> project.getId().equals(row.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(matchingProject.getOverdueTaskCount()).isEqualTo(1);
+        assertThat(matchingProject.getDueSoonTaskCount()).isEqualTo(1);
+        assertThat(matchingProject.getTargetDate()).isNull();
     }
 
     /**
@@ -125,10 +163,20 @@ class DashboardMapperIntegrationTest {
      * 创建测试任务。
      */
     private Task createTask(Long projectId, Long phaseId) {
+        return createTask(projectId, phaseId, "实现仪表盘筛选", TaskStatus.TODO, null);
+    }
+
+    /**
+     * 创建指定状态和截止日期的测试任务。
+     */
+    private Task createTask(Long projectId, Long phaseId, String title, TaskStatus status,
+            LocalDate dueDate) {
         Task task = new Task();
         task.setProjectId(projectId);
         task.setPhaseId(phaseId);
-        task.setTitle("实现仪表盘筛选");
+        task.setTitle(title);
+        task.setStatus(status);
+        task.setDueDate(dueDate);
         taskMapper.insert(task);
         return task;
     }

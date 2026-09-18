@@ -14,6 +14,8 @@ public class DashboardOverviewResponse {
 
     private Map<ProjectStatus, Long> statusDistribution;
 
+    private Map<ProjectHealthStatus, Long> healthDistribution;
+
     private List<DashboardProjectResponse> projects;
 
     public long getTotalProjects() {
@@ -30,6 +32,14 @@ public class DashboardOverviewResponse {
 
     public void setStatusDistribution(Map<ProjectStatus, Long> statusDistribution) {
         this.statusDistribution = statusDistribution;
+    }
+
+    public Map<ProjectHealthStatus, Long> getHealthDistribution() {
+        return healthDistribution;
+    }
+
+    public void setHealthDistribution(Map<ProjectHealthStatus, Long> healthDistribution) {
+        this.healthDistribution = healthDistribution;
     }
 
     public List<DashboardProjectResponse> getProjects() {

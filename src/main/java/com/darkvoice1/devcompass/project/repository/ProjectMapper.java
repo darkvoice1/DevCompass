@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.darkvoice1.devcompass.dashboard.dto.DashboardProjectRow;
 import com.darkvoice1.devcompass.project.entity.Project;
 import com.darkvoice1.devcompass.project.entity.ProjectStatus;
 
@@ -23,13 +24,14 @@ public interface ProjectMapper extends BaseMapper<Project> {
      * @param status 项目状态，可为空
      * @param tag 完整项目标签，可为空
      * @param activeWithinDays 最近活跃天数，可为空
+     * @param dueSoonDays 即将到期天数窗口
      * @return 仪表盘项目列表
      */
     @Select("""
             <script>
             WITH filtered_project AS (
                 SELECT p.id, p.name, p.status, p.progress_mode, p.auto_progress,
-                       p.manual_progress, p.tags, p.updated_at
+                       p.manual_progress, p.tags, p.target_date, p.updated_at
                 FROM project p
                 WHERE p.archived = FALSE AND p.deleted_at IS NULL
                 <if test="status != null">
@@ -54,9 +56,29 @@ public interface ProjectMapper extends BaseMapper<Project> {
                 WHERE t.deleted_at IS NULL
                 GROUP BY t.project_id
             ),
+            project_task_health AS (
+                SELECT t.project_id,
+                       COUNT(*) FILTER (
+                           WHERE t.due_date IS NOT NULL
+                             AND t.due_date &lt; CURRENT_DATE
+                             AND t.status NOT IN ('COMPLETED', 'CANCELLED')
+                       ) AS overdue_task_count,
+                       COUNT(*) FILTER (
+                           WHERE t.due_date IS NOT NULL
+                             AND t.due_date &gt;= CURRENT_DATE
+                             AND t.due_date &lt;= CURRENT_DATE + (#{dueSoonDays} * INTERVAL '1 day')
+                             AND t.status NOT IN ('COMPLETED', 'CANCELLED')
+                       ) AS due_soon_task_count
+                FROM task t
+                INNER JOIN filtered_project p ON p.id = t.project_id
+                WHERE t.deleted_at IS NULL
+                GROUP BY t.project_id
+            ),
             dashboard_project AS (
                 SELECT p.id, p.name, p.status, p.progress_mode, p.auto_progress,
-                       p.manual_progress, p.tags,
+                       p.manual_progress, p.tags, p.target_date,
+                       COALESCE(h.overdue_task_count, 0) AS overdue_task_count,
+                       COALESCE(h.due_soon_task_count, 0) AS due_soon_task_count,
                        GREATEST(
                            p.updated_at,
                            COALESCE(a.task_updated_at, p.updated_at),
@@ -64,8 +86,10 @@ public interface ProjectMapper extends BaseMapper<Project> {
                        ) AS updated_at
                 FROM filtered_project p
                 LEFT JOIN project_activity a ON a.project_id = p.id
+                LEFT JOIN project_task_health h ON h.project_id = p.id
             )
-            SELECT id, name, status, progress_mode, auto_progress, manual_progress, tags, updated_at
+            SELECT id, name, status, progress_mode, auto_progress, manual_progress, tags,
+                   target_date, overdue_task_count, due_soon_task_count, updated_at
             FROM dashboard_project
             <if test="activeWithinDays != null">
                 WHERE updated_at >= CURRENT_TIMESTAMP - (#{activeWithinDays} * INTERVAL '1 day')
@@ -73,10 +97,11 @@ public interface ProjectMapper extends BaseMapper<Project> {
             ORDER BY updated_at DESC, id DESC
             </script>
             """)
-    List<Project> selectDashboardProjects(
+    List<DashboardProjectRow> selectDashboardProjects(
             @Param("status") ProjectStatus status,
             @Param("tag") String tag,
-            @Param("activeWithinDays") Integer activeWithinDays);
+            @Param("activeWithinDays") Integer activeWithinDays,
+            @Param("dueSoonDays") int dueSoonDays);
 
     /**
      * 查询指定的已软删除项目。

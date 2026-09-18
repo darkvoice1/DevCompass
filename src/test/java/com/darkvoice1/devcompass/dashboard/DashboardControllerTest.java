@@ -25,6 +25,7 @@ import com.darkvoice1.devcompass.dashboard.controller.DashboardController;
 import com.darkvoice1.devcompass.dashboard.dto.DashboardOverviewResponse;
 import com.darkvoice1.devcompass.dashboard.dto.DashboardProjectQueryRequest;
 import com.darkvoice1.devcompass.dashboard.dto.DashboardProjectResponse;
+import com.darkvoice1.devcompass.dashboard.dto.ProjectHealthStatus;
 import com.darkvoice1.devcompass.dashboard.service.DashboardService;
 import com.darkvoice1.devcompass.project.entity.ProjectStatus;
 
@@ -67,6 +68,12 @@ class DashboardControllerTest {
                 .andExpect(jsonPath("$.data.projects[0].id").value(1))
                 .andExpect(jsonPath("$.data.projects[0].name").value("研发罗盘"))
                 .andExpect(jsonPath("$.data.projects[0].progress").value(40))
+                .andExpect(jsonPath("$.data.projects[0].healthStatus").value("HEALTHY"))
+                .andExpect(jsonPath("$.data.projects[0].overdueTaskCount").value(0))
+                .andExpect(jsonPath("$.data.projects[0].dueSoonTaskCount").value(0))
+                .andExpect(jsonPath("$.data.healthDistribution.HEALTHY").value(1))
+                .andExpect(jsonPath("$.data.healthDistribution.AT_RISK").value(0))
+                .andExpect(jsonPath("$.data.healthDistribution.OVERDUE").value(0))
                 .andExpect(jsonPath("$.data.projects[0].updatedAt")
                         .value("2026-09-17T08:00:00Z"));
     }
@@ -115,6 +122,7 @@ class DashboardControllerTest {
         project.setStatus(ProjectStatus.IN_PROGRESS);
         project.setProgress(40);
         project.setTags("后端,学习项目");
+        project.setHealthStatus(ProjectHealthStatus.HEALTHY);
         project.setUpdatedAt(Instant.parse("2026-09-17T08:00:00Z"));
 
         DashboardOverviewResponse response = new DashboardOverviewResponse();
@@ -124,6 +132,10 @@ class DashboardControllerTest {
                 ProjectStatus.IN_PROGRESS, 1L,
                 ProjectStatus.COMPLETED, 0L,
                 ProjectStatus.PAUSED, 0L));
+        response.setHealthDistribution(Map.of(
+                ProjectHealthStatus.HEALTHY, 1L,
+                ProjectHealthStatus.AT_RISK, 0L,
+                ProjectHealthStatus.OVERDUE, 0L));
         response.setProjects(List.of(project));
         return response;
     }

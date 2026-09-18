@@ -1,13 +1,15 @@
 package com.darkvoice1.devcompass.dashboard.dto;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
+import com.darkvoice1.devcompass.project.entity.ProgressMode;
 import com.darkvoice1.devcompass.project.entity.ProjectStatus;
 
 /**
- * 仪表盘中的单个项目摘要。
+ * 仪表盘项目聚合查询结果，包含健康度计算所需数据。
  */
-public class DashboardProjectResponse {
+public class DashboardProjectRow {
 
     private Long id;
 
@@ -15,11 +17,15 @@ public class DashboardProjectResponse {
 
     private ProjectStatus status;
 
-    private Integer progress;
+    private ProgressMode progressMode;
+
+    private Integer autoProgress;
+
+    private Integer manualProgress;
 
     private String tags;
 
-    private ProjectHealthStatus healthStatus;
+    private LocalDate targetDate;
 
     private long overdueTaskCount;
 
@@ -51,12 +57,28 @@ public class DashboardProjectResponse {
         this.status = status;
     }
 
-    public Integer getProgress() {
-        return progress;
+    public ProgressMode getProgressMode() {
+        return progressMode;
     }
 
-    public void setProgress(Integer progress) {
-        this.progress = progress;
+    public void setProgressMode(ProgressMode progressMode) {
+        this.progressMode = progressMode;
+    }
+
+    public Integer getAutoProgress() {
+        return autoProgress;
+    }
+
+    public void setAutoProgress(Integer autoProgress) {
+        this.autoProgress = autoProgress;
+    }
+
+    public Integer getManualProgress() {
+        return manualProgress;
+    }
+
+    public void setManualProgress(Integer manualProgress) {
+        this.manualProgress = manualProgress;
     }
 
     public String getTags() {
@@ -67,12 +89,12 @@ public class DashboardProjectResponse {
         this.tags = tags;
     }
 
-    public ProjectHealthStatus getHealthStatus() {
-        return healthStatus;
+    public LocalDate getTargetDate() {
+        return targetDate;
     }
 
-    public void setHealthStatus(ProjectHealthStatus healthStatus) {
-        this.healthStatus = healthStatus;
+    public void setTargetDate(LocalDate targetDate) {
+        this.targetDate = targetDate;
     }
 
     public long getOverdueTaskCount() {
