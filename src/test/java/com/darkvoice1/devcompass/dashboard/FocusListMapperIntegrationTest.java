@@ -210,6 +210,39 @@ class FocusListMapperIntegrationTest {
     }
 
     /**
+     * 验证逾期、即将到期和阻塞三类清单不会把对方的典型数据算进去。
+     */
+    @Test
+    void shouldKeepOverdueDueSoonAndBlockedListsSeparate() {
+        LocalDate today = LocalDate.now(ZONE);
+        LocalDate yesterday = today.minusDays(1);
+        LocalDate daySeven = today.plusDays(DashboardService.DUE_SOON_DAYS);
+
+        Project project = createProject("清单隔离项目", ProjectStatus.IN_PROGRESS, null, false);
+        ProjectPhase phase = createPhase(project.getId());
+        Task overdueTask = createTask(project.getId(), phase.getId(), "隔离-逾期任务",
+                TaskStatus.TODO, yesterday);
+        Task dueSoonTask = createTask(project.getId(), phase.getId(), "隔离-即将到期任务",
+                TaskStatus.TODO, today);
+        Task blockedTask = createBlockedTask(project.getId(), phase.getId(), "隔离-阻塞任务",
+                TaskStatus.TODO, "等待评审");
+
+        List<FocusListItemResponse> overdueItems = taskMapper.selectFocusListTasks(null, yesterday);
+        List<FocusListItemResponse> dueSoonItems = taskMapper.selectFocusListTasks(today, daySeven);
+        List<FocusListItemResponse> blockedItems = taskMapper.selectBlockedFocusListTasks();
+
+        assertThat(overdueItems).extracting(item -> item.getTaskId())
+                .contains(overdueTask.getId())
+                .doesNotContain(dueSoonTask.getId(), blockedTask.getId());
+        assertThat(dueSoonItems).extracting(item -> item.getTaskId())
+                .contains(dueSoonTask.getId())
+                .doesNotContain(overdueTask.getId(), blockedTask.getId());
+        assertThat(blockedItems).extracting(item -> item.getTaskId())
+                .contains(blockedTask.getId())
+                .doesNotContain(overdueTask.getId(), dueSoonTask.getId());
+    }
+
+    /**
      * 创建测试项目。
      */
     private Project createProject(String name, ProjectStatus status, LocalDate targetDate,

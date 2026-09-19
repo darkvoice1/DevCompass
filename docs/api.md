@@ -56,3 +56,13 @@ GET /api/v1/dashboard/projects
 可选查询参数：`status`、`tag`、`activeWithinDays`。
 
 一次请求返回项目总数、状态分布、健康度分布和项目摘要。详细规则见 [dashboard.md](dashboard.md)。
+
+## 首页焦点清单
+
+```text
+GET /api/v1/dashboard/focus-lists?type=THIS_WEEK
+```
+
+`type` 必填，可选 `THIS_WEEK`、`OVERDUE`、`DUE_SOON`、`BLOCKED`。
+
+日期按 `Asia/Shanghai` 计算。详细规则见 [focus-list.md](focus-list.md)。
