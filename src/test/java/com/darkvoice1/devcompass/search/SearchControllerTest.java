@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -85,14 +86,38 @@ class SearchControllerTest {
     }
 
     /**
-     * 验证缺少关键字时返回参数校验错误。
+     * 验证项目、状态和日期筛选可以绑定为查询参数。
      */
     @Test
-    void shouldRejectBlankKeyword() throws Exception {
-        mockMvc.perform(get("/api/v1/search").param("keyword", "  "))
+    void shouldBindOptionalFilters() throws Exception {
+        when(searchService.search(any())).thenReturn(searchResponse());
+
+        mockMvc.perform(get("/api/v1/search")
+                        .param("keyword", "接口")
+                        .param("type", "TASK")
+                        .param("projectId", "8")
+                        .param("status", "TODO")
+                        .param("dateFrom", "2026-09-01")
+                        .param("dateTo", "2026-09-19"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<SearchQueryRequest> captor = ArgumentCaptor.forClass(SearchQueryRequest.class);
+        verify(searchService).search(captor.capture());
+        assertThat(captor.getValue().getProjectId()).isEqualTo(8L);
+        assertThat(captor.getValue().getStatus()).isEqualTo("TODO");
+        assertThat(captor.getValue().getDateFrom()).isEqualTo(LocalDate.of(2026, 9, 1));
+        assertThat(captor.getValue().getDateTo()).isEqualTo(LocalDate.of(2026, 9, 19));
+    }
+
+    /**
+     * 验证项目 ID 小于 1 时返回参数校验错误。
+     */
+    @Test
+    void shouldRejectInvalidProjectId() throws Exception {
+        mockMvc.perform(get("/api/v1/search").param("projectId", "0"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
-                .andExpect(jsonPath("$.data.keyword").value("搜索关键字不能为空"));
+                .andExpect(jsonPath("$.data.projectId").value("项目必须大于等于1"));
     }
 
     /**

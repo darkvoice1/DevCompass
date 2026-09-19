@@ -2,6 +2,9 @@ package com.darkvoice1.devcompass.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -72,8 +75,8 @@ class SearchMapperIntegrationTest {
                 TaskStatus.TODO);
         createTask(project.getId(), phase.getId(), "写文档", "搜索设计说明", TaskStatus.TODO);
 
-        List<SearchItemResponse> projects = searchMapper.selectProjects("%搜索%");
-        List<SearchItemResponse> tasks = searchMapper.selectTasks("%搜索%");
+        List<SearchItemResponse> projects = searchProjects("%搜索%");
+        List<SearchItemResponse> tasks = searchTasks("%搜索%");
 
         assertThat(projects).extracting(item -> item.getId()).contains(project.getId());
         assertThat(projects).extracting(item -> item.getType()).containsOnly(SearchItemType.PROJECT);
@@ -102,8 +105,8 @@ class SearchMapperIntegrationTest {
                 TaskStatus.TODO);
         taskMapper.softDeleteById(deletedTask.getId());
 
-        List<SearchItemResponse> projects = searchMapper.selectProjects("%搜索%");
-        List<SearchItemResponse> tasks = searchMapper.selectTasks("%搜索%");
+        List<SearchItemResponse> projects = searchProjects("%搜索%");
+        List<SearchItemResponse> tasks = searchTasks("%搜索%");
 
         assertThat(projects).extracting(item -> item.getId())
                 .contains(visible.getId())
@@ -123,8 +126,8 @@ class SearchMapperIntegrationTest {
         Project percentProject = createProject("百分号项目", "完成度100%验收", null, false);
         Project normalProject = createProject("普通搜索项目", "没有百分号", null, false);
 
-        List<SearchItemResponse> matched = searchMapper.selectProjects("%100\\%%");
-        List<SearchItemResponse> percentOnly = searchMapper.selectProjects("%\\%%");
+        List<SearchItemResponse> matched = searchProjects("%100\\%%");
+        List<SearchItemResponse> percentOnly = searchProjects("%\\%%");
 
         assertThat(matched).extracting(item -> item.getId())
                 .contains(percentProject.getId())
@@ -135,14 +138,115 @@ class SearchMapperIntegrationTest {
     }
 
     /**
+     * 验证按项目 ID 筛选时不会串到其他项目。
+     */
+    @Test
+    void shouldFilterByProjectId() {
+        Project matching = createProject("筛选项目甲", "搜索筛选", "筛选", false);
+        Project other = createProject("筛选项目乙", "搜索筛选", "筛选", false);
+        ProjectPhase matchingPhase = createPhase(matching.getId());
+        ProjectPhase otherPhase = createPhase(other.getId());
+        Task matchingTask = createTask(matching.getId(), matchingPhase.getId(), "筛选任务甲", null,
+                TaskStatus.TODO);
+        createTask(other.getId(), otherPhase.getId(), "筛选任务乙", null, TaskStatus.TODO);
+
+        List<SearchItemResponse> projects = searchMapper.selectProjects(
+                "%筛选%", matching.getId(), null, null, null);
+        List<SearchItemResponse> tasks = searchMapper.selectTasks(
+                "%筛选%", matching.getId(), null, null, null);
+
+        assertThat(projects).extracting(item -> item.getId())
+                .contains(matching.getId())
+                .doesNotContain(other.getId());
+        assertThat(tasks).extracting(item -> item.getId())
+                .contains(matchingTask.getId());
+        assertThat(tasks).extracting(item -> item.getTitle())
+                .contains("筛选任务甲")
+                .doesNotContain("筛选任务乙");
+    }
+
+    /**
+     * 验证按状态筛选项目和任务。
+     */
+    @Test
+    void shouldFilterByStatus() {
+        Project inProgress = createProject("进行中筛选项目", "状态筛选", "状态", false,
+                ProjectStatus.IN_PROGRESS);
+        createProject("已暂停筛选项目", "状态筛选", "状态", false, ProjectStatus.PAUSED);
+        ProjectPhase phase = createPhase(inProgress.getId());
+        Task todoTask = createTask(inProgress.getId(), phase.getId(), "待办筛选任务", null,
+                TaskStatus.TODO);
+        createTask(inProgress.getId(), phase.getId(), "进行中筛选任务", null, TaskStatus.IN_PROGRESS);
+
+        List<SearchItemResponse> projects = searchMapper.selectProjects(
+                "%状态筛选%", null, ProjectStatus.IN_PROGRESS, null, null);
+        List<SearchItemResponse> tasks = searchMapper.selectTasks(
+                "%筛选任务%", null, TaskStatus.TODO, null, null);
+
+        assertThat(projects).extracting(item -> item.getId())
+                .contains(inProgress.getId());
+        assertThat(projects).extracting(item -> item.getTitle())
+                .doesNotContain("已暂停筛选项目");
+        assertThat(tasks).extracting(item -> item.getId()).contains(todoTask.getId());
+        assertThat(tasks).extracting(item -> item.getTitle())
+                .contains("待办筛选任务")
+                .doesNotContain("进行中筛选任务");
+    }
+
+    /**
+     * 验证更新日期含当天，明天的范围不包含今天新建的数据。
+     */
+    @Test
+    void shouldFilterByUpdatedDateIncludingToday() {
+        ZoneId zone = ZoneId.of("Asia/Shanghai");
+        LocalDate today = LocalDate.now(zone);
+        Instant updatedFrom = today.atStartOfDay(zone).toInstant();
+        Instant updatedTo = today.plusDays(1).atStartOfDay(zone).toInstant();
+        Instant tomorrowFrom = today.plusDays(1).atStartOfDay(zone).toInstant();
+        Instant tomorrowTo = today.plusDays(2).atStartOfDay(zone).toInstant();
+
+        Project project = createProject("日期筛选项目", "日期筛选", "日期", false);
+
+        List<SearchItemResponse> todayItems = searchMapper.selectProjects(
+                "%日期筛选%", null, null, updatedFrom, updatedTo);
+        List<SearchItemResponse> tomorrowItems = searchMapper.selectProjects(
+                "%日期筛选%", null, null, tomorrowFrom, tomorrowTo);
+
+        assertThat(todayItems).extracting(item -> item.getId()).contains(project.getId());
+        assertThat(tomorrowItems).extracting(item -> item.getId()).doesNotContain(project.getId());
+    }
+
+    /**
+     * 按关键字查询项目，不附加其他筛选。
+     */
+    private List<SearchItemResponse> searchProjects(String keyword) {
+        return searchMapper.selectProjects(keyword, null, null, null, null);
+    }
+
+    /**
+     * 按关键字查询任务，不附加其他筛选。
+     */
+    private List<SearchItemResponse> searchTasks(String keyword) {
+        return searchMapper.selectTasks(keyword, null, null, null, null);
+    }
+
+    /**
      * 创建测试项目。
      */
     private Project createProject(String name, String description, String tags, boolean archived) {
+        return createProject(name, description, tags, archived, ProjectStatus.IN_PROGRESS);
+    }
+
+    /**
+     * 创建指定状态的测试项目。
+     */
+    private Project createProject(String name, String description, String tags, boolean archived,
+            ProjectStatus status) {
         Project project = new Project();
         project.setName(name);
         project.setDescription(description);
         project.setTags(tags);
-        project.setStatus(ProjectStatus.IN_PROGRESS);
+        project.setStatus(status);
         project.setProgressMode(ProgressMode.AUTO);
         project.setAutoProgress(20);
         project.setArchived(archived);
