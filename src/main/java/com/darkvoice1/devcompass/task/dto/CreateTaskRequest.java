@@ -34,6 +34,11 @@ public class CreateTaskRequest {
     @Min(value = 0, message = "预估工时不能为负数")
     private Integer estimatedHours;
 
+    private Boolean blocked;
+
+    @Size(max = 500, message = "阻塞原因长度不能超过500个字符")
+    private String blockerReason;
+
     public Long getProjectId() {
         return projectId;
     }
@@ -88,5 +93,21 @@ public class CreateTaskRequest {
 
     public void setEstimatedHours(Integer estimatedHours) {
         this.estimatedHours = estimatedHours;
+    }
+
+    public Boolean getBlocked() {
+        return blocked;
+    }
+
+    public void setBlocked(Boolean blocked) {
+        this.blocked = blocked;
+    }
+
+    public String getBlockerReason() {
+        return blockerReason;
+    }
+
+    public void setBlockerReason(String blockerReason) {
+        this.blockerReason = blockerReason;
     }
 }

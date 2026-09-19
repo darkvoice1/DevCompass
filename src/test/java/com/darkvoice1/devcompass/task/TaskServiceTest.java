@@ -85,6 +85,38 @@ class TaskServiceTest {
         assertThat(response.getPriority()).isEqualTo(TaskPriority.MEDIUM);
         assertThat(response.getPhaseId()).isEqualTo(2L);
         assertThat(response.getPhaseName()).isEqualTo("开发实现");
+        assertThat(response.isBlocked()).isFalse();
+        assertThat(response.getBlockerReason()).isNull();
+    }
+
+    /**
+     * 验证创建任务时可标记阻塞并保存原因。
+     */
+    @Test
+    void shouldCreateBlockedTaskWithReason() {
+        when(projectMapper.selectById(1L)).thenReturn(new Project());
+        when(projectPhaseMapper.selectById(2L)).thenReturn(phase(2L, 1L, "开发实现"));
+        ArgumentCaptor<Task> captor = ArgumentCaptor.forClass(Task.class);
+        doAnswer(invocation -> {
+            Task task = invocation.getArgument(0);
+            task.setId(10L);
+            return 1;
+        }).when(taskMapper).insert(any(Task.class));
+
+        CreateTaskRequest request = new CreateTaskRequest();
+        request.setProjectId(1L);
+        request.setPhaseId(2L);
+        request.setTitle("等待接口联调");
+        request.setBlocked(true);
+        request.setBlockerReason("  依赖登录接口  ");
+
+        var response = taskService.createTask(request);
+
+        verify(taskMapper).insert(captor.capture());
+        assertThat(captor.getValue().isBlocked()).isTrue();
+        assertThat(captor.getValue().getBlockerReason()).isEqualTo("依赖登录接口");
+        assertThat(response.isBlocked()).isTrue();
+        assertThat(response.getBlockerReason()).isEqualTo("依赖登录接口");
     }
 
     /**
@@ -109,6 +141,33 @@ class TaskServiceTest {
         assertThat(response.getTitle()).isEqualTo("新标题");
         assertThat(response.getStatus()).isEqualTo(TaskStatus.TODO);
         assertThat(response.getUpdatedAt()).isNotNull();
+        verify(taskMapper).updateById(task);
+    }
+
+    /**
+     * 验证取消阻塞时会清空阻塞原因。
+     */
+    @Test
+    void shouldClearBlockerReasonWhenUnblocked() {
+        Task task = new Task();
+        task.setId(10L);
+        task.setProjectId(1L);
+        task.setPhaseId(2L);
+        task.setTitle("等待接口联调");
+        task.setStatus(TaskStatus.TODO);
+        task.setBlocked(true);
+        task.setBlockerReason("依赖登录接口");
+        when(taskMapper.selectById(10L)).thenReturn(task);
+        when(projectPhaseMapper.selectById(2L)).thenReturn(phase(2L, 1L, "开发实现"));
+
+        UpdateTaskRequest request = new UpdateTaskRequest();
+        request.setTitle("等待接口联调");
+        request.setBlocked(false);
+
+        var response = taskService.updateTask(10L, request);
+
+        assertThat(response.isBlocked()).isFalse();
+        assertThat(response.getBlockerReason()).isNull();
         verify(taskMapper).updateById(task);
     }
 

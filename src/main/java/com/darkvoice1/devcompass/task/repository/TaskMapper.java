@@ -50,6 +50,25 @@ public interface TaskMapper extends BaseMapper<Task> {
             @Param("toDate") LocalDate toDate);
 
     /**
+     * 查询未完成的阻塞任务。
+     *
+     * @return 可跳转到项目和任务详情的阻塞清单项
+     */
+    @Select("""
+            SELECT t.id AS task_id, t.title, t.status, t.due_date, t.blocker_reason,
+                   t.project_id, p.name AS project_name, 'TASK' AS item_kind
+            FROM task t
+            INNER JOIN project p ON p.id = t.project_id
+            WHERE t.deleted_at IS NULL
+              AND p.deleted_at IS NULL
+              AND p.archived = FALSE
+              AND t.status NOT IN ('COMPLETED', 'CANCELLED')
+              AND t.blocked = TRUE
+            ORDER BY t.updated_at DESC, t.id ASC
+            """)
+    List<FocusListItemResponse> selectBlockedFocusListTasks();
+
+    /**
      * 查询指定的已软删除任务。
      */
     @Select("SELECT * FROM task WHERE id = #{id} AND deleted_at IS NOT NULL")

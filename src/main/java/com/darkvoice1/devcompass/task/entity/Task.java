@@ -35,6 +35,14 @@ public class Task {
 
     private Integer estimatedHours;
 
+    private boolean blocked;
+
+    /**
+     * 阻塞原因，未阻塞时为空。
+     */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private String blockerReason;
+
     private Instant createdAt;
 
     private Instant updatedAt;
@@ -116,6 +124,22 @@ public class Task {
 
     public void setEstimatedHours(Integer estimatedHours) {
         this.estimatedHours = estimatedHours;
+    }
+
+    public boolean isBlocked() {
+        return blocked;
+    }
+
+    public void setBlocked(boolean blocked) {
+        this.blocked = blocked;
+    }
+
+    public String getBlockerReason() {
+        return blockerReason;
+    }
+
+    public void setBlockerReason(String blockerReason) {
+        this.blockerReason = blockerReason;
     }
 
     public Instant getCreatedAt() {

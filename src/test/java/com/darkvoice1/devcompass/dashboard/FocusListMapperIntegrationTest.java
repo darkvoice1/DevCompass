@@ -174,6 +174,42 @@ class FocusListMapperIntegrationTest {
     }
 
     /**
+     * 验证阻塞清单只包含未完成的阻塞任务，已完成、已取消、已删除和归档项目中的任务不计入。
+     */
+    @Test
+    void shouldSelectBlockedTasksAndExcludeInvalidOnes() {
+        Project project = createProject("阻塞清单项目", ProjectStatus.IN_PROGRESS, null, false);
+        ProjectPhase phase = createPhase(project.getId());
+        Task blockedTask = createBlockedTask(project.getId(), phase.getId(), "卡住的任务",
+                TaskStatus.IN_PROGRESS, "依赖登录接口");
+        createBlockedTask(project.getId(), phase.getId(), "没有截止日期的阻塞", TaskStatus.TODO, null);
+        createTask(project.getId(), phase.getId(), "未阻塞任务", TaskStatus.TODO, null);
+        createBlockedTask(project.getId(), phase.getId(), "已完成但仍阻塞", TaskStatus.COMPLETED, "旧原因");
+        createBlockedTask(project.getId(), phase.getId(), "已取消但仍阻塞", TaskStatus.CANCELLED, "旧原因");
+        Task deletedTask = createBlockedTask(project.getId(), phase.getId(), "已删除阻塞",
+                TaskStatus.TODO, "旧原因");
+        taskMapper.softDeleteById(deletedTask.getId());
+
+        Project archivedProject = createProject("归档阻塞项目", ProjectStatus.IN_PROGRESS, null, true);
+        ProjectPhase archivedPhase = createPhase(archivedProject.getId());
+        createBlockedTask(archivedProject.getId(), archivedPhase.getId(), "归档项目阻塞",
+                TaskStatus.TODO, "旧原因");
+
+        List<FocusListItemResponse> items = taskMapper.selectBlockedFocusListTasks();
+
+        assertThat(items).extracting(item -> item.getTaskId()).contains(blockedTask.getId());
+        assertThat(items).extracting(item -> item.getTitle())
+                .contains("卡住的任务", "没有截止日期的阻塞")
+                .doesNotContain("未阻塞任务", "已完成但仍阻塞", "已取消但仍阻塞",
+                        "已删除阻塞", "归档项目阻塞");
+        assertThat(items.stream()
+                .filter(item -> blockedTask.getId().equals(item.getTaskId()))
+                .findFirst()
+                .orElseThrow()
+                .getBlockerReason()).isEqualTo("依赖登录接口");
+    }
+
+    /**
      * 创建测试项目。
      */
     private Project createProject(String name, ProjectStatus status, LocalDate targetDate,
@@ -211,6 +247,22 @@ class FocusListMapperIntegrationTest {
         task.setTitle(title);
         task.setStatus(status);
         task.setDueDate(dueDate);
+        taskMapper.insert(task);
+        return task;
+    }
+
+    /**
+     * 创建指定阻塞原因的测试任务。
+     */
+    private Task createBlockedTask(Long projectId, Long phaseId, String title, TaskStatus status,
+            String blockerReason) {
+        Task task = new Task();
+        task.setProjectId(projectId);
+        task.setPhaseId(phaseId);
+        task.setTitle(title);
+        task.setStatus(status);
+        task.setBlocked(true);
+        task.setBlockerReason(blockerReason);
         taskMapper.insert(task);
         return task;
     }

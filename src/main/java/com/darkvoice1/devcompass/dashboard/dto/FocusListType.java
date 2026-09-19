@@ -12,5 +12,8 @@ public enum FocusListType {
     OVERDUE,
 
     /** 今天起 7 天内到期的未完成任务。 */
-    DUE_SOON
+    DUE_SOON,
+
+    /** 已标记阻塞且尚未完成的任务。 */
+    BLOCKED
 }

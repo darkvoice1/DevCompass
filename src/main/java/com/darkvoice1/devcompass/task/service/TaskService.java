@@ -88,6 +88,7 @@ public class TaskService {
         task.setPriority(request.getPriority() == null ? TaskPriority.MEDIUM : request.getPriority());
         task.setDueDate(request.getDueDate());
         task.setEstimatedHours(request.getEstimatedHours());
+        applyBlockState(task, Boolean.TRUE.equals(request.getBlocked()), request.getBlockerReason());
         taskMapper.insert(task);
         return toResponse(task);
     }
@@ -106,6 +107,7 @@ public class TaskService {
         if (request.getPriority() != null) task.setPriority(request.getPriority());
         if (request.getDueDate() != null) task.setDueDate(request.getDueDate());
         if (request.getEstimatedHours() != null) task.setEstimatedHours(request.getEstimatedHours());
+        applyBlockState(task, request.getBlocked(), request.getBlockerReason());
         task.setUpdatedAt(Instant.now());
         taskMapper.updateById(task);
         return toResponse(task);
@@ -409,6 +411,21 @@ public class TaskService {
     }
 
     /**
+     * 更新阻塞标记。未阻塞时清空原因；原因两侧空白会被去掉。
+     */
+    private void applyBlockState(Task task, Boolean blocked, String blockerReason) {
+        if (blocked != null) {
+            task.setBlocked(blocked);
+        }
+        if (blockerReason != null) {
+            task.setBlockerReason(blockerReason.isBlank() ? null : blockerReason.trim());
+        }
+        if (!task.isBlocked()) {
+            task.setBlockerReason(null);
+        }
+    }
+
+    /**
      * 将任务实体转换为接口响应数据。
      *
      * @param task 任务实体
@@ -427,6 +444,8 @@ public class TaskService {
         response.setPriority(task.getPriority());
         response.setDueDate(task.getDueDate());
         response.setEstimatedHours(task.getEstimatedHours());
+        response.setBlocked(task.isBlocked());
+        response.setBlockerReason(task.getBlockerReason());
         response.setCreatedAt(task.getCreatedAt());
         response.setUpdatedAt(task.getUpdatedAt());
         return response;

@@ -23,6 +23,8 @@ public class FocusListItemResponse {
 
     private String projectName;
 
+    private String blockerReason;
+
     public FocusListItemKind getItemKind() {
         return itemKind;
     }
@@ -77,5 +79,13 @@ public class FocusListItemResponse {
 
     public void setProjectName(String projectName) {
         this.projectName = projectName;
+    }
+
+    public String getBlockerReason() {
+        return blockerReason;
+    }
+
+    public void setBlockerReason(String blockerReason) {
+        this.blockerReason = blockerReason;
     }
 }

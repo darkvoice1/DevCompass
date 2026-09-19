@@ -41,7 +41,7 @@ public class FocusListService {
     }
 
     /**
-     * 按清单类型查询本周任务、逾期事项或即将到期任务。
+     * 按清单类型查询本周、逾期、即将到期或阻塞事项。
      *
      * @param request 清单查询参数
      * @return 日期范围和清单项
@@ -52,6 +52,7 @@ public class FocusListService {
             case THIS_WEEK -> thisWeek(today);
             case OVERDUE -> overdue(today);
             case DUE_SOON -> dueSoon(today);
+            case BLOCKED -> blocked();
         };
     }
 
@@ -83,6 +84,14 @@ public class FocusListService {
         LocalDate toDate = today.plusDays(DashboardService.DUE_SOON_DAYS);
         return toResponse(FocusListType.DUE_SOON, today, toDate,
                 taskMapper.selectFocusListTasks(today, toDate));
+    }
+
+    /**
+     * 查询已标记阻塞且尚未完成的任务。
+     */
+    private FocusListResponse blocked() {
+        return toResponse(FocusListType.BLOCKED, null, null,
+                taskMapper.selectBlockedFocusListTasks());
     }
 
     /**

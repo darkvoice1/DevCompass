@@ -92,7 +92,7 @@ class FocusListControllerTest {
     }
 
     /**
-     * 验证逾期和即将到期类型可以绑定为查询参数。
+     * 验证逾期、即将到期和阻塞类型可以绑定为查询参数。
      */
     @Test
     void shouldBindOverdueAndDueSoonTypes() throws Exception {
@@ -102,6 +102,27 @@ class FocusListControllerTest {
                 .andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/dashboard/focus-lists").param("type", "DUE_SOON"))
                 .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/dashboard/focus-lists").param("type", "BLOCKED"))
+                .andExpect(status().isOk());
+    }
+
+    /**
+     * 验证阻塞清单返回阻塞原因和跳转字段。
+     */
+    @Test
+    void shouldGetBlockedFocusList() throws Exception {
+        when(focusListService.getFocusList(any())).thenReturn(blockedResponse());
+
+        mockMvc.perform(get("/api/v1/dashboard/focus-lists").param("type", "BLOCKED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.type").value("BLOCKED"))
+                .andExpect(jsonPath("$.data.fromDate").value(nullValue()))
+                .andExpect(jsonPath("$.data.toDate").value(nullValue()))
+                .andExpect(jsonPath("$.data.items[0].itemKind").value("TASK"))
+                .andExpect(jsonPath("$.data.items[0].taskId").value(1))
+                .andExpect(jsonPath("$.data.items[0].title").value("卡住的任务"))
+                .andExpect(jsonPath("$.data.items[0].blockerReason").value("依赖登录接口"))
+                .andExpect(jsonPath("$.data.items[0].projectId").value(10));
     }
 
     /**
@@ -180,6 +201,25 @@ class FocusListControllerTest {
         response.setType(FocusListType.OVERDUE);
         response.setToDate(LocalDate.of(2026, 9, 15));
         response.setItems(List.of(taskItem, projectItem));
+        return response;
+    }
+
+    /**
+     * 创建测试用阻塞清单响应。
+     */
+    private FocusListResponse blockedResponse() {
+        FocusListItemResponse item = new FocusListItemResponse();
+        item.setItemKind(FocusListItemKind.TASK);
+        item.setTaskId(1L);
+        item.setTitle("卡住的任务");
+        item.setStatus(TaskStatus.IN_PROGRESS);
+        item.setBlockerReason("依赖登录接口");
+        item.setProjectId(10L);
+        item.setProjectName("研发罗盘");
+
+        FocusListResponse response = new FocusListResponse();
+        response.setType(FocusListType.BLOCKED);
+        response.setItems(List.of(item));
         return response;
     }
 }

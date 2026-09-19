@@ -21,6 +21,8 @@ public class TaskDetailResponse {
     private TaskPriority priority;
     private LocalDate dueDate;
     private Integer estimatedHours;
+    private boolean blocked;
+    private String blockerReason;
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -44,6 +46,10 @@ public class TaskDetailResponse {
     public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
     public Integer getEstimatedHours() { return estimatedHours; }
     public void setEstimatedHours(Integer estimatedHours) { this.estimatedHours = estimatedHours; }
+    public boolean isBlocked() { return blocked; }
+    public void setBlocked(boolean blocked) { this.blocked = blocked; }
+    public String getBlockerReason() { return blockerReason; }
+    public void setBlockerReason(String blockerReason) { this.blockerReason = blockerReason; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

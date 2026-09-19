@@ -137,6 +137,27 @@ class FocusListServiceTest {
     }
 
     /**
+     * 验证阻塞清单只查询阻塞任务，不按日期筛选。
+     */
+    @Test
+    void shouldQueryBlockedTasksWithoutDateRange() {
+        FocusListItemResponse item = taskItem(1L, "卡住的任务", LocalDate.of(2026, 9, 20));
+        item.setBlockerReason("依赖登录接口");
+        when(taskMapper.selectBlockedFocusListTasks()).thenReturn(List.of(item));
+
+        var response = focusListService.getFocusList(request(FocusListType.BLOCKED));
+
+        assertThat(response.getType()).isEqualTo(FocusListType.BLOCKED);
+        assertThat(response.getFromDate()).isNull();
+        assertThat(response.getToDate()).isNull();
+        assertThat(response.getItems()).extracting(itemResponse -> itemResponse.getTitle())
+                .containsExactly("卡住的任务");
+        assertThat(response.getItems().get(0).getBlockerReason()).isEqualTo("依赖登录接口");
+        verify(taskMapper).selectBlockedFocusListTasks();
+        verifyNoMoreInteractions(taskMapper, projectMapper);
+    }
+
+    /**
      * 创建指定类型的清单查询参数。
      */
     private FocusListQueryRequest request(FocusListType type) {
