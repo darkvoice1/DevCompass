@@ -27,6 +27,7 @@ import com.darkvoice1.devcompass.timeline.dto.TimelineEventResponse;
 import com.darkvoice1.devcompass.timeline.dto.TimelineEventType;
 import com.darkvoice1.devcompass.timeline.dto.TimelineQueryRequest;
 import com.darkvoice1.devcompass.timeline.dto.TimelineResponse;
+import com.darkvoice1.devcompass.timeline.dto.TimelineView;
 import com.darkvoice1.devcompass.timeline.service.TimelineService;
 
 /**
@@ -100,14 +101,22 @@ class TimelineControllerTest {
     }
 
     /**
-     * 验证缺少开始日期时返回参数校验错误。
+     * 验证周视图和锚点日期可以绑定为查询参数。
      */
     @Test
-    void shouldRejectMissingFromDate() throws Exception {
-        mockMvc.perform(get("/api/v1/timeline").param("toDate", "2026-09-30"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
-                .andExpect(jsonPath("$.data.fromDate").value("开始日期不能为空"));
+    void shouldBindViewAndDate() throws Exception {
+        when(timelineService.getTimeline(any())).thenReturn(timelineResponse());
+
+        mockMvc.perform(get("/api/v1/timeline")
+                        .param("view", "WEEK")
+                        .param("date", "2026-09-16"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<TimelineQueryRequest> captor =
+                ArgumentCaptor.forClass(TimelineQueryRequest.class);
+        verify(timelineService).getTimeline(captor.capture());
+        assertThat(captor.getValue().getView()).isEqualTo(TimelineView.WEEK);
+        assertThat(captor.getValue().getDate()).isEqualTo(LocalDate.of(2026, 9, 16));
     }
 
     /**

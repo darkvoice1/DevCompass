@@ -7,7 +7,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +22,7 @@ import com.darkvoice1.devcompass.task.entity.TaskStatus;
 import com.darkvoice1.devcompass.timeline.dto.TimelineEventResponse;
 import com.darkvoice1.devcompass.timeline.dto.TimelineEventType;
 import com.darkvoice1.devcompass.timeline.dto.TimelineQueryRequest;
+import com.darkvoice1.devcompass.timeline.dto.TimelineView;
 import com.darkvoice1.devcompass.timeline.repository.TimelineMapper;
 import com.darkvoice1.devcompass.timeline.service.TimelineService;
 
@@ -37,7 +41,9 @@ class TimelineServiceTest {
     @BeforeEach
     void setUp() {
         timelineMapper = mock(TimelineMapper.class);
-        timelineService = new TimelineService(timelineMapper);
+        Clock clock = Clock.fixed(Instant.parse("2026-09-16T08:00:00+08:00"),
+                ZoneId.of("Asia/Shanghai"));
+        timelineService = new TimelineService(timelineMapper, clock);
     }
 
     /**
@@ -111,6 +117,113 @@ class TimelineServiceTest {
                 LocalDate.of(2026, 9, 30), LocalDate.of(2026, 9, 1))))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("日期范围不合法");
+        verifyNoMoreInteractions(timelineMapper);
+    }
+
+    /**
+     * 验证按周视图时使用该日所在周一到周日。
+     */
+    @Test
+    void shouldResolveWeekViewToMondayThroughSunday() {
+        when(timelineMapper.selectTaskEvents(
+                LocalDate.of(2026, 9, 14), LocalDate.of(2026, 9, 20)))
+                .thenReturn(List.of());
+        when(timelineMapper.selectProjectEvents(
+                LocalDate.of(2026, 9, 14), LocalDate.of(2026, 9, 20)))
+                .thenReturn(List.of());
+
+        TimelineQueryRequest request = new TimelineQueryRequest();
+        request.setView(TimelineView.WEEK);
+        request.setDate(LocalDate.of(2026, 9, 16));
+
+        var response = timelineService.getTimeline(request);
+
+        assertThat(response.getFromDate()).isEqualTo(LocalDate.of(2026, 9, 14));
+        assertThat(response.getToDate()).isEqualTo(LocalDate.of(2026, 9, 20));
+        verify(timelineMapper).selectTaskEvents(
+                LocalDate.of(2026, 9, 14), LocalDate.of(2026, 9, 20));
+        verify(timelineMapper).selectProjectEvents(
+                LocalDate.of(2026, 9, 14), LocalDate.of(2026, 9, 20));
+    }
+
+    /**
+     * 验证按月视图时使用该日所在月的 1 号到月末。
+     */
+    @Test
+    void shouldResolveMonthViewToFirstThroughLastDay() {
+        when(timelineMapper.selectTaskEvents(
+                LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30)))
+                .thenReturn(List.of());
+        when(timelineMapper.selectProjectEvents(
+                LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30)))
+                .thenReturn(List.of());
+
+        TimelineQueryRequest request = new TimelineQueryRequest();
+        request.setView(TimelineView.MONTH);
+        request.setDate(LocalDate.of(2026, 9, 16));
+
+        var response = timelineService.getTimeline(request);
+
+        assertThat(response.getFromDate()).isEqualTo(LocalDate.of(2026, 9, 1));
+        assertThat(response.getToDate()).isEqualTo(LocalDate.of(2026, 9, 30));
+    }
+
+    /**
+     * 验证未指定 date 时，周视图按应用时区的今天所在周计算。
+     */
+    @Test
+    void shouldUseTodayWhenViewDateIsMissing() {
+        when(timelineMapper.selectTaskEvents(
+                LocalDate.of(2026, 9, 14), LocalDate.of(2026, 9, 20)))
+                .thenReturn(List.of());
+        when(timelineMapper.selectProjectEvents(
+                LocalDate.of(2026, 9, 14), LocalDate.of(2026, 9, 20)))
+                .thenReturn(List.of());
+
+        TimelineQueryRequest request = new TimelineQueryRequest();
+        request.setView(TimelineView.WEEK);
+
+        var response = timelineService.getTimeline(request);
+
+        assertThat(response.getFromDate()).isEqualTo(LocalDate.of(2026, 9, 14));
+        assertThat(response.getToDate()).isEqualTo(LocalDate.of(2026, 9, 20));
+    }
+
+    /**
+     * 验证同时传了起止日期和视图时，以显式日期范围为准。
+     */
+    @Test
+    void shouldPreferExplicitDateRangeOverView() {
+        when(timelineMapper.selectTaskEvents(
+                LocalDate.of(2026, 8, 20), LocalDate.of(2026, 9, 10)))
+                .thenReturn(List.of());
+        when(timelineMapper.selectProjectEvents(
+                LocalDate.of(2026, 8, 20), LocalDate.of(2026, 9, 10)))
+                .thenReturn(List.of());
+
+        TimelineQueryRequest request = request(
+                LocalDate.of(2026, 8, 20), LocalDate.of(2026, 9, 10));
+        request.setView(TimelineView.MONTH);
+        request.setDate(LocalDate.of(2026, 9, 16));
+
+        var response = timelineService.getTimeline(request);
+
+        assertThat(response.getFromDate()).isEqualTo(LocalDate.of(2026, 8, 20));
+        assertThat(response.getToDate()).isEqualTo(LocalDate.of(2026, 9, 10));
+        verify(timelineMapper).selectTaskEvents(
+                LocalDate.of(2026, 8, 20), LocalDate.of(2026, 9, 10));
+        verify(timelineMapper).selectProjectEvents(
+                LocalDate.of(2026, 8, 20), LocalDate.of(2026, 9, 10));
+    }
+
+    /**
+     * 验证既没有日期范围也没有视图时返回校验错误。
+     */
+    @Test
+    void shouldRejectMissingRangeAndView() {
+        assertThatThrownBy(() -> timelineService.getTimeline(new TimelineQueryRequest()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("请提供日期范围或视图类型");
         verifyNoMoreInteractions(timelineMapper);
     }
 
