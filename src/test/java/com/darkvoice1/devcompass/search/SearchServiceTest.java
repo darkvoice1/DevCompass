@@ -61,6 +61,8 @@ class SearchServiceTest {
                 .thenReturn(List.of(project));
         when(searchMapper.selectTasks(eq("%接口%"), isNull(), isNull(), isNull(), isNull()))
                 .thenReturn(List.of(task));
+        when(searchMapper.selectWorkLogs(eq("%接口%"), isNull(), isNull(), isNull()))
+                .thenReturn(List.of());
 
         var response = searchService.search(request("接口", null));
 
@@ -69,6 +71,7 @@ class SearchServiceTest {
                 .containsExactly("实现搜索接口", "研发罗盘");
         verify(searchMapper).selectProjects(eq("%接口%"), isNull(), isNull(), isNull(), isNull());
         verify(searchMapper).selectTasks(eq("%接口%"), isNull(), isNull(), isNull(), isNull());
+        verify(searchMapper).selectWorkLogs(eq("%接口%"), isNull(), isNull(), isNull());
         verifyNoMoreInteractions(searchMapper);
     }
 
@@ -109,12 +112,15 @@ class SearchServiceTest {
                 .thenReturn(List.of());
         when(searchMapper.selectTasks(eq("%100\\%完成%"), isNull(), isNull(), isNull(), isNull()))
                 .thenReturn(List.of());
+        when(searchMapper.selectWorkLogs(eq("%100\\%完成%"), isNull(), isNull(), isNull()))
+                .thenReturn(List.of());
 
         var response = searchService.search(request("  100%完成  ", null));
 
         assertThat(response.getKeyword()).isEqualTo("100%完成");
         verify(searchMapper).selectProjects(eq("%100\\%完成%"), isNull(), isNull(), isNull(), isNull());
         verify(searchMapper).selectTasks(eq("%100\\%完成%"), isNull(), isNull(), isNull(), isNull());
+        verify(searchMapper).selectWorkLogs(eq("%100\\%完成%"), isNull(), isNull(), isNull());
     }
 
     /**
@@ -128,6 +134,8 @@ class SearchServiceTest {
         when(searchMapper.selectProjects(eq("%罗盘%"), isNull(), isNull(), isNull(), isNull()))
                 .thenReturn(List.of(project));
         when(searchMapper.selectTasks(eq("%罗盘%"), isNull(), isNull(), isNull(), isNull()))
+                .thenReturn(List.of());
+        when(searchMapper.selectWorkLogs(eq("%罗盘%"), isNull(), isNull(), isNull()))
                 .thenReturn(List.of());
 
         var response = searchService.search(request("罗盘", null));
@@ -145,6 +153,8 @@ class SearchServiceTest {
                 .thenReturn(List.of());
         when(searchMapper.selectTasks(isNull(), eq(8L), isNull(), isNull(), isNull()))
                 .thenReturn(List.of());
+        when(searchMapper.selectWorkLogs(isNull(), eq(8L), isNull(), isNull()))
+                .thenReturn(List.of());
 
         SearchQueryRequest request = new SearchQueryRequest();
         request.setProjectId(8L);
@@ -154,6 +164,7 @@ class SearchServiceTest {
         assertThat(response.getKeyword()).isNull();
         verify(searchMapper).selectProjects(isNull(), eq(8L), isNull(), isNull(), isNull());
         verify(searchMapper).selectTasks(isNull(), eq(8L), isNull(), isNull(), isNull());
+        verify(searchMapper).selectWorkLogs(isNull(), eq(8L), isNull(), isNull());
         verifyNoMoreInteractions(searchMapper);
     }
 
@@ -209,6 +220,9 @@ class SearchServiceTest {
                 .thenReturn(List.of());
         when(searchMapper.selectTasks(eq("%接口%"), isNull(), isNull(), eq(updatedFrom), eq(updatedTo)))
                 .thenReturn(List.of());
+        when(searchMapper.selectWorkLogs(
+                eq("%接口%"), isNull(), eq(LocalDate.of(2026, 9, 19)), eq(LocalDate.of(2026, 9, 19))))
+                .thenReturn(List.of());
 
         SearchQueryRequest request = request("接口", null);
         request.setDateFrom(LocalDate.of(2026, 9, 19));
@@ -219,6 +233,8 @@ class SearchServiceTest {
                 eq("%接口%"), isNull(), isNull(), eq(updatedFrom), eq(updatedTo));
         verify(searchMapper).selectTasks(
                 eq("%接口%"), isNull(), isNull(), eq(updatedFrom), eq(updatedTo));
+        verify(searchMapper).selectWorkLogs(
+                eq("%接口%"), isNull(), eq(LocalDate.of(2026, 9, 19)), eq(LocalDate.of(2026, 9, 19)));
     }
 
     /**
@@ -247,6 +263,45 @@ class SearchServiceTest {
         assertThatThrownBy(() -> searchService.search(request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("不支持的状态");
+        verifyNoMoreInteractions(searchMapper);
+    }
+
+    /**
+     * 验证指定类型为工作日志时只查询日志。
+     */
+    @Test
+    void shouldSearchWorkLogsOnlyWhenTypeIsWorkLog() {
+        SearchItemResponse workLog = item(SearchItemType.WORK_LOG, 3L, "实现搜索接口",
+                Instant.parse("2026-09-19T08:00:00Z"), 1L, "研发罗盘");
+        workLog.setTaskId(2L);
+        workLog.setSummary("完成统一搜索");
+        when(searchMapper.selectWorkLogs(eq("%搜索%"), isNull(), isNull(), isNull()))
+                .thenReturn(List.of(workLog));
+
+        var response = searchService.search(request("搜索", SearchItemType.WORK_LOG));
+
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getItems().get(0).getType()).isEqualTo(SearchItemType.WORK_LOG);
+        assertThat(response.getItems().get(0).getTaskId()).isEqualTo(2L);
+        verify(searchMapper).selectWorkLogs(eq("%搜索%"), isNull(), isNull(), isNull());
+        verifyNoMoreInteractions(searchMapper);
+    }
+
+    /**
+     * 验证传了状态时不搜索工作日志。
+     */
+    @Test
+    void shouldSkipWorkLogsWhenStatusIsPresent() {
+        when(searchMapper.selectTasks(
+                eq("%接口%"), isNull(), eq(TaskStatus.TODO), isNull(), isNull()))
+                .thenReturn(List.of());
+
+        SearchQueryRequest request = request("接口", SearchItemType.TASK);
+        request.setStatus("TODO");
+        searchService.search(request);
+
+        verify(searchMapper).selectTasks(
+                eq("%接口%"), isNull(), eq(TaskStatus.TODO), isNull(), isNull());
         verifyNoMoreInteractions(searchMapper);
     }
 

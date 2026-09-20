@@ -9,5 +9,8 @@ public enum SearchItemType {
     PROJECT,
 
     /** 任务。 */
-    TASK
+    TASK,
+
+    /** 工作日志，当作笔记搜索。 */
+    WORK_LOG
 }

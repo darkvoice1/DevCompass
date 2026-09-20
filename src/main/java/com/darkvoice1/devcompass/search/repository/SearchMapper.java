@@ -1,6 +1,7 @@
 package com.darkvoice1.devcompass.search.repository;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 import org.apache.ibatis.annotations.Mapper;
@@ -109,4 +110,49 @@ public interface SearchMapper {
             @Param("status") TaskStatus status,
             @Param("updatedFrom") Instant updatedFrom,
             @Param("updatedTo") Instant updatedTo);
+
+    /**
+     * 按可选条件搜索未删除工作日志，所属任务和项目必须未删除，项目未归档。
+     *
+     * @param keyword 已转义并带通配符的匹配模式，可为空
+     * @param projectId 项目主键，可为空
+     * @param dateFrom 日志日期起点，可为空
+     * @param dateTo 日志日期终点，可为空
+     * @return 匹配的工作日志结果
+     */
+    @Select("""
+            <script>
+            SELECT w.id, 'WORK_LOG' AS type, t.title,
+                   COALESCE(w.summary_content, w.plan_content) AS summary,
+                   w.updated_at, t.project_id, p.name AS project_name, w.task_id
+            FROM work_log w
+            INNER JOIN task t ON t.id = w.task_id
+            INNER JOIN project p ON p.id = t.project_id
+            WHERE w.deleted_at IS NULL
+              AND t.deleted_at IS NULL
+              AND p.deleted_at IS NULL
+              AND p.archived = FALSE
+              <if test="keyword != null">
+                AND (
+                      w.plan_content ILIKE #{keyword} ESCAPE '\\'
+                      OR w.summary_content ILIKE #{keyword} ESCAPE '\\'
+                    )
+              </if>
+              <if test="projectId != null">
+                AND t.project_id = #{projectId}
+              </if>
+              <if test="dateFrom != null">
+                AND w.log_date &gt;= #{dateFrom}
+              </if>
+              <if test="dateTo != null">
+                AND w.log_date &lt;= #{dateTo}
+              </if>
+            ORDER BY w.updated_at DESC, w.id DESC
+            </script>
+            """)
+    List<SearchItemResponse> selectWorkLogs(
+            @Param("keyword") String keyword,
+            @Param("projectId") Long projectId,
+            @Param("dateFrom") LocalDate dateFrom,
+            @Param("dateTo") LocalDate dateTo);
 }

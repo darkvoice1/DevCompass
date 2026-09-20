@@ -30,6 +30,8 @@ import com.darkvoice1.devcompass.search.repository.SearchMapper;
 import com.darkvoice1.devcompass.task.entity.Task;
 import com.darkvoice1.devcompass.task.entity.TaskStatus;
 import com.darkvoice1.devcompass.task.repository.TaskMapper;
+import com.darkvoice1.devcompass.worklog.entity.WorkLog;
+import com.darkvoice1.devcompass.worklog.repository.WorkLogMapper;
 
 /**
  * 验证全局搜索在真实 PostgreSQL 上的关键字匹配和排除规则。
@@ -53,6 +55,9 @@ class SearchMapperIntegrationTest {
 
     @Autowired
     private TaskMapper taskMapper;
+
+    @Autowired
+    private WorkLogMapper workLogMapper;
 
     /**
      * 将测试容器连接信息注入 Spring 数据源配置。
@@ -217,6 +222,79 @@ class SearchMapperIntegrationTest {
     }
 
     /**
+     * 验证工作日志可按计划和总结关键字命中，并带上任务跳转字段。
+     */
+    @Test
+    void shouldMatchWorkLogKeywordFields() {
+        Project project = createProject("日志搜索项目", "日志", "日志", false);
+        ProjectPhase phase = createPhase(project.getId());
+        Task task = createTask(project.getId(), phase.getId(), "完成搜索接口", null, TaskStatus.TODO);
+        WorkLog workLog = createWorkLog(task.getId(), LocalDate.of(2026, 9, 19),
+                "准备测试数据", "完成统一搜索接口");
+
+        List<SearchItemResponse> items = searchWorkLogs("%统一搜索%");
+
+        assertThat(items).extracting(item -> item.getId()).contains(workLog.getId());
+        assertThat(items).extracting(item -> item.getType()).containsOnly(SearchItemType.WORK_LOG);
+        assertThat(items).extracting(item -> item.getTitle()).contains("完成搜索接口");
+        assertThat(items).extracting(item -> item.getTaskId()).contains(task.getId());
+        assertThat(items).extracting(item -> item.getProjectId()).contains(project.getId());
+        assertThat(items).extracting(item -> item.getSummary()).contains("完成统一搜索接口");
+    }
+
+    /**
+     * 验证已删除日志、已删除任务和归档项目下的日志不会被搜到。
+     */
+    @Test
+    void shouldExcludeDeletedAndArchivedWorkLogs() {
+        Project visible = createProject("可见日志项目", "日志排除", "日志", false);
+        Project archived = createProject("归档日志项目", "日志排除", "日志", true);
+        ProjectPhase visiblePhase = createPhase(visible.getId());
+        ProjectPhase archivedPhase = createPhase(archived.getId());
+        Task visibleTask = createTask(visible.getId(), visiblePhase.getId(), "可见日志任务", null,
+                TaskStatus.TODO);
+        Task archivedTask = createTask(archived.getId(), archivedPhase.getId(), "归档日志任务", null,
+                TaskStatus.TODO);
+        WorkLog visibleLog = createWorkLog(visibleTask.getId(), LocalDate.of(2026, 9, 19),
+                null, "可见日志总结");
+        createWorkLog(archivedTask.getId(), LocalDate.of(2026, 9, 19), null, "归档日志总结");
+        Task extraTask = createTask(visible.getId(), visiblePhase.getId(), "待删除日志任务", null,
+                TaskStatus.TODO);
+        WorkLog deletedLog = createWorkLog(extraTask.getId(), LocalDate.of(2026, 9, 18),
+                null, "已删除日志总结");
+        workLogMapper.deleteById(deletedLog.getId());
+
+        List<SearchItemResponse> items = searchWorkLogs("%日志总结%");
+
+        assertThat(items).extracting(item -> item.getId()).contains(visibleLog.getId());
+        assertThat(items).extracting(item -> item.getSummary())
+                .contains("可见日志总结")
+                .doesNotContain("归档日志总结", "已删除日志总结");
+    }
+
+    /**
+     * 验证工作日志按日志日期筛选，包含当天。
+     */
+    @Test
+    void shouldFilterWorkLogsByLogDate() {
+        Project project = createProject("日志日期项目", "日志日期", "日期", false);
+        ProjectPhase phase = createPhase(project.getId());
+        Task task = createTask(project.getId(), phase.getId(), "日志日期任务", null, TaskStatus.TODO);
+        WorkLog todayLog = createWorkLog(task.getId(), LocalDate.of(2026, 9, 19),
+                null, "当天日志");
+        createWorkLog(createTask(project.getId(), phase.getId(), "昨天日志任务", null,
+                TaskStatus.TODO).getId(), LocalDate.of(2026, 9, 18), null, "昨天日志");
+
+        List<SearchItemResponse> items = searchMapper.selectWorkLogs(
+                "%日志%", null, LocalDate.of(2026, 9, 19), LocalDate.of(2026, 9, 19));
+
+        assertThat(items).extracting(item -> item.getId()).contains(todayLog.getId());
+        assertThat(items).extracting(item -> item.getSummary())
+                .contains("当天日志")
+                .doesNotContain("昨天日志");
+    }
+
+    /**
      * 按关键字查询项目，不附加其他筛选。
      */
     private List<SearchItemResponse> searchProjects(String keyword) {
@@ -228,6 +306,28 @@ class SearchMapperIntegrationTest {
      */
     private List<SearchItemResponse> searchTasks(String keyword) {
         return searchMapper.selectTasks(keyword, null, null, null, null);
+    }
+
+    /**
+     * 按关键字查询工作日志，不附加其他筛选。
+     */
+    private List<SearchItemResponse> searchWorkLogs(String keyword) {
+        return searchMapper.selectWorkLogs(keyword, null, null, null);
+    }
+
+    /**
+     * 创建测试工作日志。
+     */
+    private WorkLog createWorkLog(Long taskId, LocalDate logDate, String planContent,
+            String summaryContent) {
+        WorkLog workLog = new WorkLog();
+        workLog.setTaskId(taskId);
+        workLog.setLogDate(logDate);
+        workLog.setPlanContent(planContent);
+        workLog.setSummaryContent(summaryContent);
+        workLog.setSpentMinutes(0);
+        workLogMapper.insert(workLog);
+        return workLog;
     }
 
     /**

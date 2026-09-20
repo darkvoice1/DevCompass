@@ -20,7 +20,7 @@ import com.darkvoice1.devcompass.search.repository.SearchMapper;
 import com.darkvoice1.devcompass.task.entity.TaskStatus;
 
 /**
- * 按关键字和筛选条件搜索项目和任务。
+ * 按关键字和筛选条件搜索项目、任务和工作日志。
  */
 @Service
 public class SearchService {
@@ -46,7 +46,7 @@ public class SearchService {
     }
 
     /**
-     * 按关键字和可选筛选条件搜索项目和任务。
+     * 按关键字和可选筛选条件搜索项目、任务和工作日志。
      *
      * @param request 搜索参数
      * @return 按更新时间倒序的搜索结果
@@ -60,6 +60,8 @@ public class SearchService {
         boolean searchProjects = request.getType() == null
                 || request.getType() == SearchItemType.PROJECT;
         boolean searchTasks = request.getType() == null || request.getType() == SearchItemType.TASK;
+        boolean searchWorkLogs = request.getType() == null
+                || request.getType() == SearchItemType.WORK_LOG;
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
             if (projectStatus == null && taskStatus == null) {
                 throw new BusinessException(ErrorCode.VALIDATION_ERROR, "不支持的状态");
@@ -70,6 +72,7 @@ public class SearchService {
             if (taskStatus == null) {
                 searchTasks = false;
             }
+            searchWorkLogs = false;
         }
         Instant updatedFrom = startOfDay(request.getDateFrom());
         Instant updatedTo = startOfNextDay(request.getDateTo());
@@ -82,6 +85,10 @@ public class SearchService {
         if (searchTasks) {
             items.addAll(searchMapper.selectTasks(
                     pattern, request.getProjectId(), taskStatus, updatedFrom, updatedTo));
+        }
+        if (searchWorkLogs) {
+            items.addAll(searchMapper.selectWorkLogs(
+                    pattern, request.getProjectId(), request.getDateFrom(), request.getDateTo()));
         }
         items.forEach(item -> item.setSummary(toSummary(item.getSummary())));
         items.sort(Comparator

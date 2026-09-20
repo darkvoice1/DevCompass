@@ -21,6 +21,8 @@ public class SearchItemResponse {
 
     private String projectName;
 
+    private Long taskId;
+
     public SearchItemType getType() {
         return type;
     }
@@ -75,5 +77,13 @@ public class SearchItemResponse {
 
     public void setProjectName(String projectName) {
         this.projectName = projectName;
+    }
+
+    public Long getTaskId() {
+        return taskId;
+    }
+
+    public void setTaskId(Long taskId) {
+        this.taskId = taskId;
     }
 }

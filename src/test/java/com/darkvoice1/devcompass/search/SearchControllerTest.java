@@ -3,6 +3,7 @@ package com.darkvoice1.devcompass.search;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -66,7 +67,8 @@ class SearchControllerTest {
                 .andExpect(jsonPath("$.data.items[0].id").value(2))
                 .andExpect(jsonPath("$.data.items[0].title").value("实现搜索接口"))
                 .andExpect(jsonPath("$.data.items[0].projectId").value(1))
-                .andExpect(jsonPath("$.data.items[0].projectName").value("研发罗盘"));
+                .andExpect(jsonPath("$.data.items[0].projectName").value("研发罗盘"))
+                .andExpect(jsonPath("$.data.items[0].taskId").value(2));
     }
 
     /**
@@ -78,11 +80,15 @@ class SearchControllerTest {
 
         mockMvc.perform(get("/api/v1/search").param("keyword", "接口").param("type", "TASK"))
                 .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/search").param("keyword", "接口").param("type", "WORK_LOG"))
+                .andExpect(status().isOk());
 
         ArgumentCaptor<SearchQueryRequest> captor = ArgumentCaptor.forClass(SearchQueryRequest.class);
-        verify(searchService).search(captor.capture());
-        assertThat(captor.getValue().getKeyword()).isEqualTo("接口");
-        assertThat(captor.getValue().getType()).isEqualTo(SearchItemType.TASK);
+        verify(searchService, times(2)).search(captor.capture());
+        assertThat(captor.getAllValues()).extracting(item -> item.getKeyword())
+                .containsOnly("接口");
+        assertThat(captor.getAllValues()).extracting(item -> item.getType())
+                .contains(SearchItemType.TASK, SearchItemType.WORK_LOG);
     }
 
     /**
@@ -132,6 +138,7 @@ class SearchControllerTest {
         item.setUpdatedAt(Instant.parse("2026-09-19T08:00:00Z"));
         item.setProjectId(1L);
         item.setProjectName("研发罗盘");
+        item.setTaskId(2L);
 
         SearchResponse response = new SearchResponse();
         response.setKeyword("接口");
