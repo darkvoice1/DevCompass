@@ -66,3 +66,13 @@ GET /api/v1/dashboard/focus-lists?type=THIS_WEEK
 `type` 必填，可选 `THIS_WEEK`、`OVERDUE`、`DUE_SOON`、`BLOCKED`。
 
 日期按 `Asia/Shanghai` 计算。详细规则见 [focus-list.md](focus-list.md)。
+
+## 全局搜索
+
+```text
+GET /api/v1/search?keyword=接口
+```
+
+可选查询参数：`keyword`、`type`、`projectId`、`status`、`dateFrom`、`dateTo`。
+
+`type` 可选 `PROJECT`、`TASK`、`WORK_LOG`。第一版使用 PostgreSQL，不引入 Elasticsearch。详细规则见 [search-design.md](search-design.md)。

@@ -22,13 +22,17 @@
 | `idx_task_active_due_date` | `task` | 首页按截止日期范围查询未完成、未删除任务。 |
 | `idx_task_active_blocked_updated` | `task` | 首页查询未完成的阻塞任务，并按更新时间排序。 |
 | `idx_project_active_unarchived_target_date` | `project` | 首页查询目标日期已过的未完成、未归档项目。 |
+| `idx_project_active_unarchived_updated` | `project` | 全局搜索未归档项目，按更新时间和 ID 倒序排列。 |
+| `idx_task_active_updated` | `task` | 全局搜索未删除任务，按更新时间和 ID 倒序排列。 |
+| `idx_work_log_active_updated` | `work_log` | 全局搜索未删除工作日志，按更新时间和 ID 倒序排列。 |
 
 ## 设计说明
 
 - `active` 索引使用 PostgreSQL 部分索引，只保存 `deleted_at IS NULL` 的记录，匹配系统普通查询默认排除软删除数据的规则。
 - 仪表盘项目索引额外限制 `archived = FALSE`，因为首页聚合默认不展示已归档项目。
 - 焦点清单按截止日期或阻塞标记跨项目查询，因此相关索引不以 `project_id` 开头，并用部分索引排除已完成、已取消和已删除数据。
-- 任务标题关键字使用 `LIKE` 查询。普通 B-Tree 索引无法有效覆盖任意位置的关键字搜索，因此暂不引入全文索引。
+- 任务标题关键字和全局搜索都使用任意位置 `LIKE` / `ILIKE`。普通 B-Tree 索引无法有效覆盖这种写法，因此暂不引入 `pg_trgm` 或 Elasticsearch。
+- 全局搜索按更新时间倒序合并结果，因此为未删除项目、任务和工作日志补充了更新时间部分索引。工作日志的日期筛选继续使用已有的 `idx_work_log_active_log_date`。
 - 项目标签保存在逗号分隔字符串中，仪表盘按完整标签匹配，暂不引入 GIN 或全文索引。
 - 复合索引的列顺序先放等值筛选字段，再放排序字段，减少常用项目任务列表的扫描范围。
 - 分区表和全文索引不在当前任务范围内。

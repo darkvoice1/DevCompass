@@ -102,4 +102,24 @@ class CoreIndexesIntegrationTest {
                 "idx_task_active_blocked_updated",
                 "idx_task_active_due_date");
     }
+
+    /**
+     * 验证 V16 迁移创建全局搜索查询索引。
+     */
+    @Test
+    void shouldCreateSearchQueryIndexes() {
+        List<String> indexes = jdbcTemplate.queryForList(
+                "SELECT indexname FROM pg_indexes "
+                        + "WHERE schemaname = 'public' AND indexname IN "
+                        + "('idx_project_active_unarchived_updated', "
+                        + "'idx_task_active_updated', "
+                        + "'idx_work_log_active_updated') "
+                        + "ORDER BY indexname",
+                String.class);
+
+        assertThat(indexes).containsExactly(
+                "idx_project_active_unarchived_updated",
+                "idx_task_active_updated",
+                "idx_work_log_active_updated");
+    }
 }
