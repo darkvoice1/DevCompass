@@ -73,7 +73,11 @@ class TimelineControllerTest {
                 .andExpect(jsonPath("$.data.items[0].projectId").value(10))
                 .andExpect(jsonPath("$.data.items[0].status").value("TODO"))
                 .andExpect(jsonPath("$.data.items[0].priority").value("HIGH"))
-                .andExpect(jsonPath("$.data.items[0].completed").value(false));
+                .andExpect(jsonPath("$.data.items[0].completed").value(false))
+                .andExpect(jsonPath("$.data.items[1].type").value("PROJECT"))
+                .andExpect(jsonPath("$.data.items[1].id").value(8))
+                .andExpect(jsonPath("$.data.items[1].date").value("2026-09-30"))
+                .andExpect(jsonPath("$.data.items[1].completed").value(false));
     }
 
     /**
@@ -121,10 +125,19 @@ class TimelineControllerTest {
         event.setPriority(TaskPriority.HIGH);
         event.setCompleted(false);
 
+        TimelineEventResponse project = new TimelineEventResponse();
+        project.setType(TimelineEventType.PROJECT);
+        project.setId(8L);
+        project.setTitle("研发罗盘");
+        project.setDate(LocalDate.of(2026, 9, 30));
+        project.setProjectId(8L);
+        project.setProjectName("研发罗盘");
+        project.setCompleted(false);
+
         TimelineResponse response = new TimelineResponse();
         response.setFromDate(LocalDate.of(2026, 9, 1));
         response.setToDate(LocalDate.of(2026, 9, 30));
-        response.setItems(List.of(event));
+        response.setItems(List.of(event, project));
         return response;
     }
 }

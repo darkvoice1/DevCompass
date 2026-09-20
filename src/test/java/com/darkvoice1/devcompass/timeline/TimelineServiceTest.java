@@ -52,6 +52,9 @@ class TimelineServiceTest {
         when(timelineMapper.selectTaskEvents(
                 LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30)))
                 .thenReturn(List.of(todo, done));
+        when(timelineMapper.selectProjectEvents(
+                LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30)))
+                .thenReturn(List.of());
 
         var response = timelineService.getTimeline(request(
                 LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30)));
@@ -63,6 +66,38 @@ class TimelineServiceTest {
         assertThat(response.getItems()).extracting(item -> item.isCompleted())
                 .containsExactly(false, true);
         verify(timelineMapper).selectTaskEvents(
+                LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30));
+        verify(timelineMapper).selectProjectEvents(
+                LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30));
+        verifyNoMoreInteractions(timelineMapper);
+    }
+
+    /**
+     * 验证项目目标日期会并入时间线，已完成项目标成 completed，并按日期排序。
+     */
+    @Test
+    void shouldMergeProjectTargetDatesAndSortByDate() {
+        TimelineEventResponse laterTask = event(2L, "较晚任务", LocalDate.of(2026, 9, 20),
+                TaskStatus.TODO);
+        TimelineEventResponse project = projectEvent(8L, "研发罗盘", LocalDate.of(2026, 9, 10), true);
+        when(timelineMapper.selectTaskEvents(
+                LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30)))
+                .thenReturn(List.of(laterTask));
+        when(timelineMapper.selectProjectEvents(
+                LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30)))
+                .thenReturn(List.of(project));
+
+        var response = timelineService.getTimeline(request(
+                LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30)));
+
+        assertThat(response.getItems()).extracting(item -> item.getType())
+                .containsExactly(TimelineEventType.PROJECT, TimelineEventType.TASK);
+        assertThat(response.getItems()).extracting(item -> item.getTitle())
+                .containsExactly("研发罗盘", "较晚任务");
+        assertThat(response.getItems().get(0).isCompleted()).isTrue();
+        verify(timelineMapper).selectTaskEvents(
+                LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30));
+        verify(timelineMapper).selectProjectEvents(
                 LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30));
         verifyNoMoreInteractions(timelineMapper);
     }
@@ -102,6 +137,22 @@ class TimelineServiceTest {
         event.setProjectName("研发罗盘");
         event.setStatus(status);
         event.setPriority(TaskPriority.MEDIUM);
+        return event;
+    }
+
+    /**
+     * 创建测试用项目事件。
+     */
+    private TimelineEventResponse projectEvent(Long id, String title, LocalDate date,
+            boolean completed) {
+        TimelineEventResponse event = new TimelineEventResponse();
+        event.setType(TimelineEventType.PROJECT);
+        event.setId(id);
+        event.setTitle(title);
+        event.setDate(date);
+        event.setProjectId(id);
+        event.setProjectName(title);
+        event.setCompleted(completed);
         return event;
     }
 }

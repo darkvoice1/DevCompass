@@ -6,5 +6,8 @@ package com.darkvoice1.devcompass.timeline.dto;
 public enum TimelineEventType {
 
     /** 有截止日期的任务。 */
-    TASK
+    TASK,
+
+    /** 有目标日期的项目。 */
+    PROJECT
 }

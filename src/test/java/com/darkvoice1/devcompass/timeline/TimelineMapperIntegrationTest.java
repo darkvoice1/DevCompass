@@ -114,14 +114,89 @@ class TimelineMapperIntegrationTest {
     }
 
     /**
+     * 验证目标日期在范围内的项目会出现，无目标日期、归档和已删除项目不出现。
+     */
+    @Test
+    void shouldSelectProjectEventsInsideDateRange() {
+        Project inRange = createProject("目标日期项目", false, LocalDate.of(2026, 9, 15),
+                ProjectStatus.IN_PROGRESS);
+        Project completed = createProject("已完成目标项目", false, LocalDate.of(2026, 9, 28),
+                ProjectStatus.COMPLETED);
+        createProject("没有目标日期", false, null, ProjectStatus.IN_PROGRESS);
+        createProject("范围外目标项目", false, LocalDate.of(2026, 10, 2),
+                ProjectStatus.IN_PROGRESS);
+        createProject("归档目标项目", true, LocalDate.of(2026, 9, 15),
+                ProjectStatus.IN_PROGRESS);
+        Project deleted = createProject("删除目标项目", false, LocalDate.of(2026, 9, 16),
+                ProjectStatus.IN_PROGRESS);
+        projectMapper.softDeleteById(deleted.getId());
+
+        List<TimelineEventResponse> items = timelineMapper.selectProjectEvents(
+                LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30));
+
+        assertThat(items).extracting(item -> item.getId())
+                .contains(inRange.getId(), completed.getId())
+                .doesNotContain(deleted.getId());
+        assertThat(items).extracting(item -> item.getTitle())
+                .contains("目标日期项目", "已完成目标项目")
+                .doesNotContain("没有目标日期", "范围外目标项目", "归档目标项目", "删除目标项目");
+        assertThat(items.stream()
+                .filter(item -> inRange.getId().equals(item.getId()))
+                .findFirst()
+                .orElseThrow()).satisfies(item -> {
+                    assertThat(item.getType()).isEqualTo(TimelineEventType.PROJECT);
+                    assertThat(item.getDate()).isEqualTo(LocalDate.of(2026, 9, 15));
+                    assertThat(item.getProjectId()).isEqualTo(inRange.getId());
+                    assertThat(item.isCompleted()).isFalse();
+                });
+        assertThat(items.stream()
+                .filter(item -> completed.getId().equals(item.getId()))
+                .findFirst()
+                .orElseThrow()
+                .isCompleted()).isTrue();
+    }
+
+    /**
+     * 验证跨月日期范围会同时返回上月末和本月初的任务与项目。
+     */
+    @Test
+    void shouldSelectEventsAcrossMonths() {
+        Project project = createProject("跨月时间线项目", false, LocalDate.of(2026, 8, 31),
+                ProjectStatus.IN_PROGRESS);
+        ProjectPhase phase = createPhase(project.getId());
+        Task septemberTask = createTask(project.getId(), phase.getId(), "九月初任务",
+                TaskStatus.TODO, LocalDate.of(2026, 9, 5), TaskPriority.MEDIUM);
+
+        List<TimelineEventResponse> tasks = timelineMapper.selectTaskEvents(
+                LocalDate.of(2026, 8, 20), LocalDate.of(2026, 9, 10));
+        List<TimelineEventResponse> projects = timelineMapper.selectProjectEvents(
+                LocalDate.of(2026, 8, 20), LocalDate.of(2026, 9, 10));
+
+        assertThat(tasks).extracting(item -> item.getId()).contains(septemberTask.getId());
+        assertThat(tasks).extracting(item -> item.getTitle()).contains("九月初任务");
+        assertThat(projects).extracting(item -> item.getId()).contains(project.getId());
+        assertThat(projects).extracting(item -> item.getDate())
+                .contains(LocalDate.of(2026, 8, 31));
+    }
+
+    /**
      * 创建测试项目。
      */
     private Project createProject(String name, boolean archived) {
+        return createProject(name, archived, null, ProjectStatus.IN_PROGRESS);
+    }
+
+    /**
+     * 创建指定目标日期和状态的测试项目。
+     */
+    private Project createProject(String name, boolean archived, LocalDate targetDate,
+            ProjectStatus status) {
         Project project = new Project();
         project.setName(name);
-        project.setStatus(ProjectStatus.IN_PROGRESS);
+        project.setStatus(status);
         project.setProgressMode(ProgressMode.AUTO);
         project.setAutoProgress(20);
+        project.setTargetDate(targetDate);
         project.setArchived(archived);
         projectMapper.insert(project);
         return project;

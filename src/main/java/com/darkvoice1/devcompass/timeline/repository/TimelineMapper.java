@@ -41,4 +41,29 @@ public interface TimelineMapper {
     List<TimelineEventResponse> selectTaskEvents(
             @Param("fromDate") LocalDate fromDate,
             @Param("toDate") LocalDate toDate);
+
+    /**
+     * 按目标日期范围查询未归档、未删除项目。
+     *
+     * @param fromDate 目标日期起始值，包含当天
+     * @param toDate 目标日期结束值，包含当天
+     * @return 时间线项目事件
+     */
+    @Select("""
+            <script>
+            SELECT p.id, 'PROJECT' AS type, p.name AS title, p.target_date AS date,
+                   p.id AS project_id, p.name AS project_name,
+                   (p.status = 'COMPLETED') AS completed
+            FROM project p
+            WHERE p.deleted_at IS NULL
+              AND p.archived = FALSE
+              AND p.target_date IS NOT NULL
+              AND p.target_date &gt;= #{fromDate}
+              AND p.target_date &lt;= #{toDate}
+            ORDER BY p.target_date ASC, p.id ASC
+            </script>
+            """)
+    List<TimelineEventResponse> selectProjectEvents(
+            @Param("fromDate") LocalDate fromDate,
+            @Param("toDate") LocalDate toDate);
 }
