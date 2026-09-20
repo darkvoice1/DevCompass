@@ -76,3 +76,11 @@ GET /api/v1/search?keyword=接口
 可选查询参数：`keyword`、`type`、`projectId`、`status`、`dateFrom`、`dateTo`。
 
 `type` 可选 `PROJECT`、`TASK`、`WORK_LOG`。第一版使用 PostgreSQL，不引入 Elasticsearch。详细规则见 [search-design.md](search-design.md)。
+
+## 时间线
+
+```text
+GET /api/v1/timeline?view=WEEK&date=2026-09-16
+```
+
+也可传 `fromDate`、`toDate`，或 `view=MONTH`。返回任务截止日期和项目目标日期。不同步外部日历。详细规则见 [api/timeline.md](api/timeline.md)。

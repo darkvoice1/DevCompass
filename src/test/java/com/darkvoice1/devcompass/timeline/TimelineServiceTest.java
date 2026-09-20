@@ -147,6 +147,28 @@ class TimelineServiceTest {
     }
 
     /**
+     * 验证锚点是周日时，周视图仍落在该周周一到周日，不会跨到下一周。
+     */
+    @Test
+    void shouldResolveWeekViewWhenAnchorIsSunday() {
+        when(timelineMapper.selectTaskEvents(
+                LocalDate.of(2026, 9, 14), LocalDate.of(2026, 9, 20)))
+                .thenReturn(List.of());
+        when(timelineMapper.selectProjectEvents(
+                LocalDate.of(2026, 9, 14), LocalDate.of(2026, 9, 20)))
+                .thenReturn(List.of());
+
+        TimelineQueryRequest request = new TimelineQueryRequest();
+        request.setView(TimelineView.WEEK);
+        request.setDate(LocalDate.of(2026, 9, 20));
+
+        var response = timelineService.getTimeline(request);
+
+        assertThat(response.getFromDate()).isEqualTo(LocalDate.of(2026, 9, 14));
+        assertThat(response.getToDate()).isEqualTo(LocalDate.of(2026, 9, 20));
+    }
+
+    /**
      * 验证按月视图时使用该日所在月的 1 号到月末。
      */
     @Test

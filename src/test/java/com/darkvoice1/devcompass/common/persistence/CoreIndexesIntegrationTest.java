@@ -122,4 +122,22 @@ class CoreIndexesIntegrationTest {
                 "idx_task_active_updated",
                 "idx_work_log_active_updated");
     }
+
+    /**
+     * 验证 V17 迁移创建时间线查询索引。
+     */
+    @Test
+    void shouldCreateTimelineQueryIndexes() {
+        List<String> indexes = jdbcTemplate.queryForList(
+                "SELECT indexname FROM pg_indexes "
+                        + "WHERE schemaname = 'public' AND indexname IN "
+                        + "('idx_task_timeline_due_date', "
+                        + "'idx_project_timeline_target_date') "
+                        + "ORDER BY indexname",
+                String.class);
+
+        assertThat(indexes).containsExactly(
+                "idx_project_timeline_target_date",
+                "idx_task_timeline_due_date");
+    }
 }
