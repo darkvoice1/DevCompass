@@ -84,3 +84,13 @@ GET /api/v1/timeline?view=WEEK&date=2026-09-16
 ```
 
 也可传 `fromDate`、`toDate`，或 `view=MONTH`。返回任务截止日期和项目目标日期。不同步外部日历。详细规则见 [api/timeline.md](api/timeline.md)。
+
+## 项目动态
+
+```text
+GET /api/v1/activities?projectId=8
+```
+
+`projectId` 必填。可选查询参数：`objectType`、`dateFrom`、`dateTo`、`page`、`pageSize`。
+
+不传 `objectType` 时返回该项目下项目、任务和阶段的动态。只记宏观操作，不记代码 diff。详细规则见 [audit.md](audit.md)。

@@ -140,4 +140,22 @@ class CoreIndexesIntegrationTest {
                 "idx_project_timeline_target_date",
                 "idx_task_timeline_due_date");
     }
+
+    /**
+     * 验证 V19 迁移创建项目动态查询索引。
+     */
+    @Test
+    void shouldCreateActivityQueryIndexes() {
+        List<String> indexes = jdbcTemplate.queryForList(
+                "SELECT indexname FROM pg_indexes "
+                        + "WHERE schemaname = 'public' AND indexname IN "
+                        + "('idx_activity_project_created', "
+                        + "'idx_activity_project_object_type_created') "
+                        + "ORDER BY indexname",
+                String.class);
+
+        assertThat(indexes).containsExactly(
+                "idx_activity_project_created",
+                "idx_activity_project_object_type_created");
+    }
 }
