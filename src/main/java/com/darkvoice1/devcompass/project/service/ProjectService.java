@@ -3,7 +3,11 @@ package com.darkvoice1.devcompass.project.service;
 import java.time.Instant;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import com.darkvoice1.devcompass.activity.entity.ActivityAction;
+import com.darkvoice1.devcompass.activity.entity.ActivityObjectType;
+import com.darkvoice1.devcompass.activity.service.ActivityService;
 import com.darkvoice1.devcompass.common.exception.BusinessException;
 import com.darkvoice1.devcompass.common.exception.ErrorCode;
 import com.darkvoice1.devcompass.project.dto.CreateProjectRequest;
@@ -22,13 +26,17 @@ public class ProjectService {
 
     private final ProjectMapper projectMapper;
 
+    private final ActivityService activityService;
+
     /**
      * 创建项目服务。
      *
      * @param projectMapper 项目数据访问对象
+     * @param activityService 动态写入服务
      */
-    public ProjectService(ProjectMapper projectMapper) {
+    public ProjectService(ProjectMapper projectMapper, ActivityService activityService) {
         this.projectMapper = projectMapper;
+        this.activityService = activityService;
     }
 
     /**
@@ -37,6 +45,7 @@ public class ProjectService {
      * @param request 创建项目的请求参数
      * @return 创建后的项目详情
      */
+    @Transactional
     public ProjectDetailResponse createProject(CreateProjectRequest request) {
         Project project = new Project();
         project.setName(request.getName());
@@ -49,6 +58,7 @@ public class ProjectService {
         project.setTags(request.getTags());
 
         projectMapper.insert(project);
+        recordProjectActivity(project, ActivityAction.CREATED, "创建项目「" + project.getName() + "」");
         return getProjectDetail(project.getId());
     }
 
@@ -71,8 +81,10 @@ public class ProjectService {
      * @return 更新后的项目详情
      * @throws BusinessException 项目不存在时抛出
      */
+    @Transactional
     public ProjectDetailResponse updateProject(Long projectId, UpdateProjectRequest request) {
         Project project = findProjectOrThrow(projectId);
+        ProjectStatus oldStatus = project.getStatus();
 
         project.setName(request.getName());
         if (request.getDescription() != null) {
@@ -93,6 +105,12 @@ public class ProjectService {
         project.setUpdatedAt(Instant.now());
 
         projectMapper.updateById(project);
+        if (request.getStatus() != null && request.getStatus() != oldStatus) {
+            recordProjectActivity(project, ActivityAction.STATUS_CHANGED,
+                    "项目「" + project.getName() + "」状态从 " + oldStatus + " 变为 " + request.getStatus());
+        } else {
+            recordProjectActivity(project, ActivityAction.UPDATED, "更新项目「" + project.getName() + "」");
+        }
         return getProjectDetail(projectId);
     }
 
@@ -103,6 +121,7 @@ public class ProjectService {
      * @return 归档后的项目详情
      * @throws BusinessException 项目不存在或已经归档时抛出
      */
+    @Transactional
     public ProjectDetailResponse archiveProject(Long projectId) {
         Project project = findProjectOrThrow(projectId);
         if (project.isArchived()) {
@@ -114,6 +133,7 @@ public class ProjectService {
         project.setArchivedAt(now);
         project.setUpdatedAt(now);
         projectMapper.updateById(project);
+        recordProjectActivity(project, ActivityAction.ARCHIVED, "归档项目「" + project.getName() + "」");
         return getProjectDetail(projectId);
     }
 
@@ -124,6 +144,7 @@ public class ProjectService {
      * @return 恢复后的项目详情
      * @throws BusinessException 项目不存在或尚未归档时抛出
      */
+    @Transactional
     public ProjectDetailResponse restoreProject(Long projectId) {
         Project project = findProjectOrThrow(projectId);
         if (!project.isArchived()) {
@@ -134,6 +155,7 @@ public class ProjectService {
         project.setArchivedAt(null);
         project.setUpdatedAt(Instant.now());
         projectMapper.updateById(project);
+        recordProjectActivity(project, ActivityAction.RESTORED, "恢复已归档项目「" + project.getName() + "」");
         return getProjectDetail(projectId);
     }
 
@@ -143,10 +165,13 @@ public class ProjectService {
      * @param projectId 项目主键
      * @throws BusinessException 项目不存在或已删除时抛出
      */
+    @Transactional
     public void deleteProject(Long projectId) {
-        if (projectMapper.softDeleteById(projectId) == 0) {
+        Project project = projectMapper.selectById(projectId);
+        if (project == null || projectMapper.softDeleteById(projectId) == 0) {
             throw new BusinessException(ErrorCode.BUSINESS_ERROR, "项目不存在或已经删除");
         }
+        recordProjectActivity(project, ActivityAction.DELETED, "删除项目「" + project.getName() + "」");
     }
 
     /**
@@ -155,10 +180,21 @@ public class ProjectService {
      * @param projectId 项目主键
      * @throws BusinessException 项目不存在或未删除时抛出
      */
+    @Transactional
     public void restoreDeletedProject(Long projectId) {
-        if (projectMapper.restoreById(projectId) == 0) {
+        Project project = projectMapper.selectDeletedById(projectId);
+        if (project == null || projectMapper.restoreById(projectId) == 0) {
             throw new BusinessException(ErrorCode.BUSINESS_ERROR, "项目不存在或未删除");
         }
+        recordProjectActivity(project, ActivityAction.RESTORED, "恢复已删除项目「" + project.getName() + "」");
+    }
+
+    /**
+     * 记录一条项目动态。
+     */
+    private void recordProjectActivity(Project project, ActivityAction action, String summary) {
+        activityService.record(project.getId(), ActivityObjectType.PROJECT, project.getId(),
+                action, summary);
     }
 
     /**

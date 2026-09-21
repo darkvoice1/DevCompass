@@ -3,8 +3,10 @@ package com.darkvoice1.devcompass.task;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -18,6 +20,9 @@ import org.mockito.ArgumentCaptor;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.darkvoice1.devcompass.activity.entity.ActivityAction;
+import com.darkvoice1.devcompass.activity.entity.ActivityObjectType;
+import com.darkvoice1.devcompass.activity.service.ActivityService;
 import com.darkvoice1.devcompass.common.exception.BusinessException;
 import com.darkvoice1.devcompass.project.entity.Project;
 import com.darkvoice1.devcompass.project.entity.ProjectPhase;
@@ -46,6 +51,7 @@ class TaskServiceTest {
     private ProjectMapper projectMapper;
     private ProjectPhaseMapper projectPhaseMapper;
     private WorkLogService workLogService;
+    private ActivityService activityService;
     private TaskService taskService;
 
     /**
@@ -57,7 +63,9 @@ class TaskServiceTest {
         projectMapper = mock(ProjectMapper.class);
         projectPhaseMapper = mock(ProjectPhaseMapper.class);
         workLogService = mock(WorkLogService.class);
-        taskService = new TaskService(taskMapper, projectMapper, projectPhaseMapper, workLogService);
+        activityService = mock(ActivityService.class);
+        taskService = new TaskService(taskMapper, projectMapper, projectPhaseMapper, workLogService,
+                activityService);
     }
 
     /**
@@ -87,6 +95,8 @@ class TaskServiceTest {
         assertThat(response.getPhaseName()).isEqualTo("开发实现");
         assertThat(response.isBlocked()).isFalse();
         assertThat(response.getBlockerReason()).isNull();
+        verify(activityService).record(eq(1L), eq(ActivityObjectType.TASK), eq(10L),
+                eq(ActivityAction.CREATED), eq("创建任务「实现任务接口」"));
     }
 
     /**
@@ -142,6 +152,8 @@ class TaskServiceTest {
         assertThat(response.getStatus()).isEqualTo(TaskStatus.TODO);
         assertThat(response.getUpdatedAt()).isNotNull();
         verify(taskMapper).updateById(task);
+        verify(activityService).record(eq(1L), eq(ActivityObjectType.TASK), eq(10L),
+                eq(ActivityAction.UPDATED), eq("更新任务「新标题」"));
     }
 
     /**
@@ -190,6 +202,9 @@ class TaskServiceTest {
         assertThat(response.getUpdatedAt()).isNotNull();
         verify(taskMapper).updateStatusIfCurrent(
                 10L, TaskStatus.TODO, TaskStatus.IN_PROGRESS, response.getUpdatedAt());
+        verify(activityService).record(eq(1L), eq(ActivityObjectType.TASK), eq(10L),
+                eq(ActivityAction.STATUS_CHANGED),
+                eq("任务「测试任务」状态从 TODO 变为 IN_PROGRESS"));
     }
 
     /**
@@ -210,6 +225,7 @@ class TaskServiceTest {
                 .saveCompletionLog(any(), any());
         verify(taskMapper, org.mockito.Mockito.never())
                 .updateStatusIfCurrent(any(), any(), any(), any());
+        verify(activityService, never()).record(any(), any(), any(), any(), any());
     }
 
     /**
@@ -233,6 +249,9 @@ class TaskServiceTest {
         verify(workLogService).saveCompletionLog(10L, completionLog);
         verify(taskMapper).updateStatusIfCurrent(
                 10L, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, response.getUpdatedAt());
+        verify(activityService).record(eq(1L), eq(ActivityObjectType.TASK), eq(10L),
+                eq(ActivityAction.STATUS_CHANGED),
+                eq("任务「测试任务」状态从 IN_PROGRESS 变为 COMPLETED"));
     }
 
     /**
@@ -253,6 +272,7 @@ class TaskServiceTest {
         verifyNoInteractions(projectMapper);
         org.mockito.Mockito.verify(taskMapper, org.mockito.Mockito.never())
                 .updateStatusIfCurrent(any(), any(), any(), any());
+        verify(activityService, never()).record(any(), any(), any(), any(), any());
     }
 
     /**
@@ -271,6 +291,7 @@ class TaskServiceTest {
                 .hasMessage("任务状态不能从 COMPLETED 流转到 IN_PROGRESS");
         org.mockito.Mockito.verify(taskMapper, org.mockito.Mockito.never())
                 .updateStatusIfCurrent(any(), any(), any(), any());
+        verify(activityService, never()).record(any(), any(), any(), any(), any());
     }
 
     /**
@@ -288,6 +309,7 @@ class TaskServiceTest {
         assertThatThrownBy(() -> taskService.changeTaskStatus(10L, request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("任务状态已发生变化，请重试");
+        verify(activityService, never()).record(any(), any(), any(), any(), any());
     }
 
     /**
@@ -545,6 +567,7 @@ class TaskServiceTest {
         assertThatThrownBy(() -> taskService.createTask(request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("项目阶段不存在");
+        verify(activityService, never()).record(any(), any(), any(), any(), any());
     }
 
     /**
@@ -552,11 +575,14 @@ class TaskServiceTest {
      */
     @Test
     void shouldSoftDeleteTask() {
+        when(taskMapper.selectById(10L)).thenReturn(task(10L, TaskStatus.TODO));
         when(taskMapper.softDeleteById(10L)).thenReturn(1);
 
         taskService.deleteTask(10L);
 
         verify(taskMapper).softDeleteById(10L);
+        verify(activityService).record(eq(1L), eq(ActivityObjectType.TASK), eq(10L),
+                eq(ActivityAction.DELETED), eq("删除任务「测试任务」"));
     }
 
     /**
@@ -564,11 +590,14 @@ class TaskServiceTest {
      */
     @Test
     void shouldRestoreDeletedTask() {
+        when(taskMapper.selectDeletedById(10L)).thenReturn(task(10L, TaskStatus.TODO));
         when(taskMapper.restoreById(10L)).thenReturn(1);
 
         taskService.restoreDeletedTask(10L);
 
         verify(taskMapper).restoreById(10L);
+        verify(activityService).record(eq(1L), eq(ActivityObjectType.TASK), eq(10L),
+                eq(ActivityAction.RESTORED), eq("恢复已删除任务「测试任务」"));
     }
 
     /**

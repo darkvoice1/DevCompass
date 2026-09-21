@@ -15,6 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.darkvoice1.devcompass.activity.entity.ActivityAction;
+import com.darkvoice1.devcompass.activity.entity.ActivityObjectType;
+import com.darkvoice1.devcompass.activity.service.ActivityService;
 import com.darkvoice1.devcompass.common.exception.BusinessException;
 import com.darkvoice1.devcompass.common.exception.ErrorCode;
 import com.darkvoice1.devcompass.project.entity.Project;
@@ -53,6 +56,7 @@ public class TaskService {
     private final ProjectMapper projectMapper;
     private final ProjectPhaseMapper projectPhaseMapper;
     private final WorkLogService workLogService;
+    private final ActivityService activityService;
 
     /**
      * 创建任务服务。
@@ -61,13 +65,16 @@ public class TaskService {
      * @param projectMapper 项目数据访问对象
      * @param projectPhaseMapper 项目阶段数据访问对象
      * @param workLogService 工作日志业务服务
+     * @param activityService 动态写入服务
      */
     public TaskService(TaskMapper taskMapper, ProjectMapper projectMapper,
-            ProjectPhaseMapper projectPhaseMapper, WorkLogService workLogService) {
+            ProjectPhaseMapper projectPhaseMapper, WorkLogService workLogService,
+            ActivityService activityService) {
         this.taskMapper = taskMapper;
         this.projectMapper = projectMapper;
         this.projectPhaseMapper = projectPhaseMapper;
         this.workLogService = workLogService;
+        this.activityService = activityService;
     }
 
     /**
@@ -76,6 +83,7 @@ public class TaskService {
      * @param request 创建任务请求
      * @return 创建后的任务详情
      */
+    @Transactional
     public TaskDetailResponse createTask(CreateTaskRequest request) {
         ensureProjectExists(request.getProjectId());
         ensurePhaseBelongsToProject(request.getProjectId(), request.getPhaseId());
@@ -90,6 +98,7 @@ public class TaskService {
         task.setEstimatedHours(request.getEstimatedHours());
         applyBlockState(task, Boolean.TRUE.equals(request.getBlocked()), request.getBlockerReason());
         taskMapper.insert(task);
+        recordTaskActivity(task, ActivityAction.CREATED, "创建任务「" + task.getTitle() + "」");
         return toResponse(task);
     }
 
@@ -100,6 +109,7 @@ public class TaskService {
      * @param request 编辑任务请求
      * @return 更新后的任务详情
      */
+    @Transactional
     public TaskDetailResponse updateTask(Long taskId, UpdateTaskRequest request) {
         Task task = findTaskOrThrow(taskId);
         task.setTitle(request.getTitle());
@@ -110,6 +120,7 @@ public class TaskService {
         applyBlockState(task, request.getBlocked(), request.getBlockerReason());
         task.setUpdatedAt(Instant.now());
         taskMapper.updateById(task);
+        recordTaskActivity(task, ActivityAction.UPDATED, "更新任务「" + task.getTitle() + "」");
         return toResponse(task);
     }
 
@@ -147,6 +158,8 @@ public class TaskService {
 
         task.setStatus(targetStatus);
         task.setUpdatedAt(updatedAt);
+        recordTaskActivity(task, ActivityAction.STATUS_CHANGED,
+                "任务「" + task.getTitle() + "」状态从 " + currentStatus + " 变为 " + targetStatus);
         return toResponse(task);
     }
 
@@ -168,10 +181,13 @@ public class TaskService {
      * @param taskId 任务主键
      * @throws BusinessException 任务不存在或已删除时抛出
      */
+    @Transactional
     public void deleteTask(Long taskId) {
-        if (taskMapper.softDeleteById(taskId) == 0) {
+        Task task = taskMapper.selectById(taskId);
+        if (task == null || taskMapper.softDeleteById(taskId) == 0) {
             throw new BusinessException(ErrorCode.BUSINESS_ERROR, "任务不存在或已经删除");
         }
+        recordTaskActivity(task, ActivityAction.DELETED, "删除任务「" + task.getTitle() + "」");
     }
 
     /**
@@ -180,10 +196,13 @@ public class TaskService {
      * @param taskId 任务主键
      * @throws BusinessException 任务不存在或未删除时抛出
      */
+    @Transactional
     public void restoreDeletedTask(Long taskId) {
-        if (taskMapper.restoreById(taskId) == 0) {
+        Task task = taskMapper.selectDeletedById(taskId);
+        if (task == null || taskMapper.restoreById(taskId) == 0) {
             throw new BusinessException(ErrorCode.BUSINESS_ERROR, "任务不存在或未删除");
         }
+        recordTaskActivity(task, ActivityAction.RESTORED, "恢复已删除任务「" + task.getTitle() + "」");
     }
 
     /**
@@ -309,6 +328,14 @@ public class TaskService {
             return column;
         }).toList());
         return response;
+    }
+
+    /**
+     * 记录一条任务动态。
+     */
+    private void recordTaskActivity(Task task, ActivityAction action, String summary) {
+        activityService.record(task.getProjectId(), ActivityObjectType.TASK, task.getId(),
+                action, summary);
     }
 
     /**

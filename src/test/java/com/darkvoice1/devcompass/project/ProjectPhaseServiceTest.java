@@ -3,8 +3,10 @@ package com.darkvoice1.devcompass.project;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -13,6 +15,9 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.darkvoice1.devcompass.activity.entity.ActivityAction;
+import com.darkvoice1.devcompass.activity.entity.ActivityObjectType;
+import com.darkvoice1.devcompass.activity.service.ActivityService;
 import com.darkvoice1.devcompass.common.exception.BusinessException;
 import com.darkvoice1.devcompass.project.dto.CreateProjectPhaseRequest;
 import com.darkvoice1.devcompass.project.dto.UpdateProjectPhaseRequest;
@@ -32,6 +37,8 @@ class ProjectPhaseServiceTest {
 
     private ProjectPhaseMapper projectPhaseMapper;
 
+    private ActivityService activityService;
+
     private ProjectPhaseService projectPhaseService;
 
     /**
@@ -41,7 +48,9 @@ class ProjectPhaseServiceTest {
     void setUp() {
         projectMapper = mock(ProjectMapper.class);
         projectPhaseMapper = mock(ProjectPhaseMapper.class);
-        projectPhaseService = new ProjectPhaseService(projectMapper, projectPhaseMapper);
+        activityService = mock(ActivityService.class);
+        projectPhaseService = new ProjectPhaseService(projectMapper, projectPhaseMapper,
+                activityService);
     }
 
     /**
@@ -66,6 +75,8 @@ class ProjectPhaseServiceTest {
         assertThat(response.getProjectId()).isEqualTo(1L);
         assertThat(response.getSortOrder()).isEqualTo(2);
         assertThat(response.getName()).isEqualTo("开发实现");
+        verify(activityService).record(eq(1L), eq(ActivityObjectType.PHASE), eq(3L),
+                eq(ActivityAction.CREATED), eq("创建阶段「开发实现」"));
     }
 
     /**
@@ -79,6 +90,7 @@ class ProjectPhaseServiceTest {
                 new CreateProjectPhaseRequest()))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("项目不存在");
+        verify(activityService, never()).record(any(), any(), any(), any(), any());
     }
 
     /**
@@ -115,6 +127,8 @@ class ProjectPhaseServiceTest {
         assertThat(response.getDescription()).isEqualTo("补充需求说明");
         assertThat(response.getUpdatedAt()).isNotNull();
         verify(projectPhaseMapper).updateById(stored);
+        verify(activityService).record(eq(1L), eq(ActivityObjectType.PHASE), eq(1L),
+                eq(ActivityAction.UPDATED), eq("更新阶段「需求分析」"));
     }
 
     /**
@@ -129,6 +143,7 @@ class ProjectPhaseServiceTest {
                 new UpdateProjectPhaseRequest()))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("项目阶段不属于当前项目");
+        verify(activityService, never()).record(any(), any(), any(), any(), any());
     }
 
     /**
@@ -153,6 +168,8 @@ class ProjectPhaseServiceTest {
         verify(projectPhaseMapper).updateById(testing);
         verify(projectPhaseMapper).updateById(analysis);
         verify(projectPhaseMapper).updateById(development);
+        verify(activityService).record(eq(1L), eq(ActivityObjectType.PHASE), eq(3L),
+                eq(ActivityAction.UPDATED), eq("调整阶段「测试验收」的排序"));
     }
 
     /**
@@ -167,6 +184,8 @@ class ProjectPhaseServiceTest {
         projectPhaseService.deleteProjectPhase(1L, 2L);
 
         verify(projectPhaseMapper).softDeleteById(2L);
+        verify(activityService).record(eq(1L), eq(ActivityObjectType.PHASE), eq(2L),
+                eq(ActivityAction.DELETED), eq("删除阶段「开发实现」"));
     }
 
     /**
@@ -181,6 +200,8 @@ class ProjectPhaseServiceTest {
         projectPhaseService.restoreDeletedProjectPhase(1L, 2L);
 
         verify(projectPhaseMapper).restoreById(2L);
+        verify(activityService).record(eq(1L), eq(ActivityObjectType.PHASE), eq(2L),
+                eq(ActivityAction.RESTORED), eq("恢复已删除阶段「开发实现」"));
     }
 
     /**

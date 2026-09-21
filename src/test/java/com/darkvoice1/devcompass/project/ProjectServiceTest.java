@@ -3,8 +3,10 @@ package com.darkvoice1.devcompass.project;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -13,6 +15,9 @@ import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.darkvoice1.devcompass.activity.entity.ActivityAction;
+import com.darkvoice1.devcompass.activity.entity.ActivityObjectType;
+import com.darkvoice1.devcompass.activity.service.ActivityService;
 import com.darkvoice1.devcompass.common.exception.BusinessException;
 import com.darkvoice1.devcompass.project.dto.CreateProjectRequest;
 import com.darkvoice1.devcompass.project.dto.ProjectDetailResponse;
@@ -30,6 +35,8 @@ class ProjectServiceTest {
 
     private ProjectMapper projectMapper;
 
+    private ActivityService activityService;
+
     private ProjectService projectService;
 
     /**
@@ -38,7 +45,8 @@ class ProjectServiceTest {
     @BeforeEach
     void setUp() {
         projectMapper = mock(ProjectMapper.class);
-        projectService = new ProjectService(projectMapper);
+        activityService = mock(ActivityService.class);
+        projectService = new ProjectService(projectMapper, activityService);
     }
 
     /**
@@ -64,6 +72,8 @@ class ProjectServiceTest {
         ProjectDetailResponse response = projectService.createProject(request);
 
         assertThat(response.getStatus()).isEqualTo(ProjectStatus.PLANNED);
+        verify(activityService).record(eq(1L), eq(ActivityObjectType.PROJECT), eq(1L),
+                eq(ActivityAction.CREATED), eq("创建项目「研发罗盘」"));
     }
 
     /**
@@ -129,6 +139,9 @@ class ProjectServiceTest {
         assertThat(response.getStatus()).isEqualTo(ProjectStatus.COMPLETED);
         assertThat(response.getTags()).isEqualTo("后端,学习项目");
         assertThat(response.getUpdatedAt()).isNotNull();
+        verify(activityService).record(eq(1L), eq(ActivityObjectType.PROJECT), eq(1L),
+                eq(ActivityAction.STATUS_CHANGED),
+                eq("项目「新项目名称」状态从 PLANNED 变为 COMPLETED"));
     }
 
     /**
@@ -144,6 +157,7 @@ class ProjectServiceTest {
         assertThatThrownBy(() -> projectService.updateProject(99L, request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("项目不存在");
+        verify(activityService, never()).record(any(), any(), any(), any(), any());
     }
 
     /**
@@ -162,6 +176,8 @@ class ProjectServiceTest {
         assertThat(response.isArchived()).isTrue();
         assertThat(response.getArchivedAt()).isNotNull();
         assertThat(response.getUpdatedAt()).isNotNull();
+        verify(activityService).record(eq(1L), eq(ActivityObjectType.PROJECT), eq(1L),
+                eq(ActivityAction.ARCHIVED), eq("归档项目「研发罗盘」"));
     }
 
     /**
@@ -181,6 +197,8 @@ class ProjectServiceTest {
         assertThat(response.isArchived()).isFalse();
         assertThat(response.getArchivedAt()).isNull();
         assertThat(response.getUpdatedAt()).isNotNull();
+        verify(activityService).record(eq(1L), eq(ActivityObjectType.PROJECT), eq(1L),
+                eq(ActivityAction.RESTORED), eq("恢复已归档项目「研发罗盘」"));
     }
 
     /**
@@ -196,6 +214,7 @@ class ProjectServiceTest {
         assertThatThrownBy(() -> projectService.archiveProject(1L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("项目已经归档，不能重复归档");
+        verify(activityService, never()).record(any(), any(), any(), any(), any());
     }
 
     /**
@@ -211,6 +230,7 @@ class ProjectServiceTest {
         assertThatThrownBy(() -> projectService.restoreProject(1L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("项目尚未归档，不能恢复");
+        verify(activityService, never()).record(any(), any(), any(), any(), any());
     }
 
     /**
@@ -218,11 +238,17 @@ class ProjectServiceTest {
      */
     @Test
     void shouldSoftDeleteProject() {
+        Project stored = new Project();
+        stored.setId(1L);
+        stored.setName("研发罗盘");
+        when(projectMapper.selectById(1L)).thenReturn(stored);
         when(projectMapper.softDeleteById(1L)).thenReturn(1);
 
         projectService.deleteProject(1L);
 
         verify(projectMapper).softDeleteById(1L);
+        verify(activityService).record(eq(1L), eq(ActivityObjectType.PROJECT), eq(1L),
+                eq(ActivityAction.DELETED), eq("删除项目「研发罗盘」"));
     }
 
     /**
@@ -230,11 +256,17 @@ class ProjectServiceTest {
      */
     @Test
     void shouldRestoreDeletedProject() {
+        Project stored = new Project();
+        stored.setId(1L);
+        stored.setName("研发罗盘");
+        when(projectMapper.selectDeletedById(1L)).thenReturn(stored);
         when(projectMapper.restoreById(1L)).thenReturn(1);
 
         projectService.restoreDeletedProject(1L);
 
         verify(projectMapper).restoreById(1L);
+        verify(activityService).record(eq(1L), eq(ActivityObjectType.PROJECT), eq(1L),
+                eq(ActivityAction.RESTORED), eq("恢复已删除项目「研发罗盘」"));
     }
 
     /**
@@ -247,5 +279,6 @@ class ProjectServiceTest {
         assertThatThrownBy(() -> projectService.deleteProject(1L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("项目不存在或已经删除");
+        verify(activityService, never()).record(any(), any(), any(), any(), any());
     }
 }

@@ -3,8 +3,12 @@ package com.darkvoice1.devcompass.project.service;
 import java.time.Instant;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.darkvoice1.devcompass.activity.entity.ActivityAction;
+import com.darkvoice1.devcompass.activity.entity.ActivityObjectType;
+import com.darkvoice1.devcompass.activity.service.ActivityService;
 import com.darkvoice1.devcompass.common.exception.BusinessException;
 import com.darkvoice1.devcompass.common.exception.ErrorCode;
 import com.darkvoice1.devcompass.project.dto.ProjectProgressResponse;
@@ -24,16 +28,20 @@ public class ProgressService {
 
     private final ProjectMapper projectMapper;
     private final TaskMapper taskMapper;
+    private final ActivityService activityService;
 
     /**
      * 创建项目进度服务。
      *
      * @param projectMapper 项目数据访问对象
      * @param taskMapper 任务数据访问对象
+     * @param activityService 动态写入服务
      */
-    public ProgressService(ProjectMapper projectMapper, TaskMapper taskMapper) {
+    public ProgressService(ProjectMapper projectMapper, TaskMapper taskMapper,
+            ActivityService activityService) {
         this.projectMapper = projectMapper;
         this.taskMapper = taskMapper;
+        this.activityService = activityService;
     }
 
     /**
@@ -72,6 +80,7 @@ public class ProgressService {
      * @return 更新后的项目进度数据
      * @throws BusinessException 项目不存在或人工校准参数不合法时抛出
      */
+    @Transactional
     public ProjectProgressResponse updateProjectProgress(
             Long projectId, UpdateProjectProgressRequest request) {
         Project project = findProjectOrThrow(projectId);
@@ -79,20 +88,25 @@ public class ProgressService {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "进度模式不能为空");
         }
 
+        String summary;
         if (request.getMode() == ProgressMode.MANUAL) {
             validateManualProgressRequest(request);
             project.setProgressMode(ProgressMode.MANUAL);
             project.setManualProgress(request.getManualProgress());
             project.setProgressReason(request.getProgressReason().trim());
+            summary = "将项目进度改为手动校准";
         } else {
             project.setProgressMode(ProgressMode.AUTO);
             project.setAutoProgress(calculateProgressWithoutProjectCheck(projectId));
             // 取消校准后，清除已不再生效的人工数据。
             project.setManualProgress(null);
             project.setProgressReason(null);
+            summary = "将项目进度改回自动计算";
         }
         project.setUpdatedAt(Instant.now());
         projectMapper.updateById(project);
+        activityService.record(project.getId(), ActivityObjectType.PROJECT, project.getId(),
+                ActivityAction.UPDATED, summary);
         return toProgressResponse(project);
     }
 

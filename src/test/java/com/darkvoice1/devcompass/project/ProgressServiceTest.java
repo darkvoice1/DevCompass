@@ -3,13 +3,18 @@ package com.darkvoice1.devcompass.project;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.darkvoice1.devcompass.activity.entity.ActivityAction;
+import com.darkvoice1.devcompass.activity.entity.ActivityObjectType;
+import com.darkvoice1.devcompass.activity.service.ActivityService;
 import com.darkvoice1.devcompass.common.exception.BusinessException;
 import com.darkvoice1.devcompass.project.entity.Project;
 import com.darkvoice1.devcompass.project.entity.ProgressMode;
@@ -25,6 +30,7 @@ class ProgressServiceTest {
 
     private ProjectMapper projectMapper;
     private TaskMapper taskMapper;
+    private ActivityService activityService;
     private ProgressService progressService;
 
     /**
@@ -34,7 +40,8 @@ class ProgressServiceTest {
     void setUp() {
         projectMapper = mock(ProjectMapper.class);
         taskMapper = mock(TaskMapper.class);
-        progressService = new ProgressService(projectMapper, taskMapper);
+        activityService = mock(ActivityService.class);
+        progressService = new ProgressService(projectMapper, taskMapper, activityService);
     }
 
     /**
@@ -77,6 +84,7 @@ class ProgressServiceTest {
         assertThat(project.getAutoProgress()).isEqualTo(100);
         assertThat(project.getUpdatedAt()).isNotNull();
         verify(projectMapper).updateById(project);
+        verify(activityService, never()).record(any(), any(), any(), any(), any());
     }
 
     /**
@@ -111,6 +119,8 @@ class ProgressServiceTest {
         assertThat(response.getProgress()).isEqualTo(60);
         assertThat(response.getProgressReason()).isEqualTo("核心功能已经完成");
         verify(projectMapper).updateById(project);
+        verify(activityService).record(eq(1L), eq(ActivityObjectType.PROJECT), eq(1L),
+                eq(ActivityAction.UPDATED), eq("将项目进度改为手动校准"));
     }
 
     /**
@@ -126,6 +136,7 @@ class ProgressServiceTest {
         assertThatThrownBy(() -> progressService.updateProjectProgress(1L, request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("手动模式必须填写校准原因");
+        verify(activityService, never()).record(any(), any(), any(), any(), any());
     }
 
     /**
@@ -152,5 +163,7 @@ class ProgressServiceTest {
         assertThat(response.getManualProgress()).isNull();
         assertThat(response.getProgressReason()).isNull();
         verify(projectMapper).updateById(project);
+        verify(activityService).record(eq(1L), eq(ActivityObjectType.PROJECT), eq(1L),
+                eq(ActivityAction.UPDATED), eq("将项目进度改回自动计算"));
     }
 }
