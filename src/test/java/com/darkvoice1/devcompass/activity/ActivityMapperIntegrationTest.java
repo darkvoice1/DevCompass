@@ -16,6 +16,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.darkvoice1.devcompass.Application;
+import com.darkvoice1.devcompass.activity.dto.ActivityQueryRequest;
 import com.darkvoice1.devcompass.activity.entity.Activity;
 import com.darkvoice1.devcompass.activity.entity.ActivityAction;
 import com.darkvoice1.devcompass.activity.entity.ActivityObjectType;
@@ -85,6 +86,37 @@ class ActivityMapperIntegrationTest {
         assertThat(items.get(1).getAction()).isEqualTo(ActivityAction.STATUS_CHANGED);
         assertThat(items).extracting(item -> item.getSummary())
                 .doesNotContain("创建项目「其他项目」");
+    }
+
+    /**
+     * 验证分页查询可以按对象类型筛选，并按时间从新到旧返回。
+     */
+    @Test
+    void shouldQueryActivitiesByObjectTypeAndPage() {
+        Project project = createProject("查询动态项目");
+        activityService.record(project.getId(), ActivityObjectType.PROJECT, project.getId(),
+                ActivityAction.CREATED, "创建项目「查询动态项目」");
+        activityService.record(project.getId(), ActivityObjectType.TASK, 99L,
+                ActivityAction.STATUS_CHANGED, "任务状态从 TODO 变为 COMPLETED");
+        activityService.record(project.getId(), ActivityObjectType.PHASE, 2L,
+                ActivityAction.CREATED, "创建阶段「开发实现」");
+
+        ActivityQueryRequest request = new ActivityQueryRequest();
+        request.setProjectId(project.getId());
+        request.setObjectType(ActivityObjectType.TASK);
+        request.setPage(1L);
+        request.setPageSize(1);
+
+        var response = activityService.queryActivities(request);
+
+        assertThat(response.getTotal()).isEqualTo(1);
+        assertThat(response.getPage()).isEqualTo(1);
+        assertThat(response.getPageSize()).isEqualTo(1);
+        assertThat(response.getRecords()).hasSize(1);
+        assertThat(response.getRecords().getFirst().getObjectType())
+                .isEqualTo(ActivityObjectType.TASK);
+        assertThat(response.getRecords().getFirst().getSummary())
+                .isEqualTo("任务状态从 TODO 变为 COMPLETED");
     }
 
     /**
