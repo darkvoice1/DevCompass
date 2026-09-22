@@ -94,3 +94,18 @@ GET /api/v1/activities?projectId=8
 `projectId` 必填。可选查询参数：`objectType`、`dateFrom`、`dateTo`、`page`、`pageSize`。
 
 不传 `objectType` 时返回该项目下项目、任务和阶段的动态。只记宏观操作，不记代码 diff。详细规则见 [audit.md](audit.md)。
+
+## 项目附件
+
+```text
+POST /api/v1/projects/{projectId}/attachments
+Content-Type: multipart/form-data
+```
+
+表单字段名是 `file`。成功时返回附件编号、原文件名、类型、大小和上传时间，不返回磁盘路径。
+
+```text
+GET /api/v1/projects/{projectId}/attachments
+```
+
+返回该项目未删除的附件，新上传的在前。已归档项目仍可上传和查看。项目不存在或已删除时拒绝。单个文件默认不超过 10MB。

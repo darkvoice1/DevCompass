@@ -192,7 +192,7 @@ class SearchServiceTest {
     }
 
     /**
-     * 验证 TODO 只筛任务，不查项目。
+     * 验证待办状态只筛选任务，不查询项目。
      */
     @Test
     void shouldSkipProjectsWhenStatusIsTaskOnly() {
