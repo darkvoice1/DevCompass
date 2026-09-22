@@ -7,6 +7,12 @@
       "defaultValue": "Asia/Shanghai"
     },
     {
+      "name": "devcompass.storage.type",
+      "type": "java.lang.String",
+      "description": "附件存储类型。当前只实现 local，写成 minio 时应用会拒绝启动。",
+      "defaultValue": "local"
+    },
+    {
       "name": "devcompass.storage.local-dir",
       "type": "java.lang.String",
       "description": "本地附件保存目录。相对路径相对于应用运行目录。",

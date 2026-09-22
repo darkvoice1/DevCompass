@@ -120,4 +120,4 @@ GET /api/v1/projects/{projectId}/attachments/{attachmentId}/content
 DELETE /api/v1/projects/{projectId}/attachments/{attachmentId}
 ```
 
-成功时 `data` 为 `null`。记录标成已删除，并删掉磁盘文件。删除后不能再下载，这一版不能恢复。
+成功时 `data` 为 `null`。记录标成已删除，并删掉磁盘文件。删除后不能再下载，这一版不能恢复。允许的文件和存储位置见 [attachment.md](attachment.md)。

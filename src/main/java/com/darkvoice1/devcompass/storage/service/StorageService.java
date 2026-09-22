@@ -18,7 +18,7 @@ import com.darkvoice1.devcompass.storage.dto.StoredFile;
 
 /**
  * 保存、读取和删除附件文件。
- * 文件写到配置的本机目录，磁盘文件名使用生成的编号。
+ * 当前只支持 local，文件写到配置的本机目录，磁盘文件名使用生成的编号。
  */
 @Service
 public class StorageService {
@@ -49,18 +49,40 @@ public class StorageService {
      * @param properties 应用自定义配置，其中包含附件目录和大小上限
      */
     public StorageService(DevCompassProperties properties) {
-        if (properties == null || properties.getStorage() == null
-                || properties.getStorage().getLocalDir() == null
-                || properties.getStorage().getLocalDir().isBlank()) {
+        if (properties == null || properties.getStorage() == null) {
             throw new IllegalArgumentException("附件目录不能为空");
         }
-        if (properties.getStorage().getMaxSizeBytes() <= 0) {
+        DevCompassProperties.Storage storage = properties.getStorage();
+        requireLocalStorage(storage.getType());
+        if (storage.getLocalDir() == null || storage.getLocalDir().isBlank()) {
+            throw new IllegalArgumentException("附件目录不能为空");
+        }
+        if (storage.getMaxSizeBytes() <= 0) {
             throw new IllegalArgumentException("文件大小上限必须大于0");
         }
-        this.rootDirectory = Path.of(properties.getStorage().getLocalDir().trim())
+        this.rootDirectory = Path.of(storage.getLocalDir().trim())
                 .toAbsolutePath()
                 .normalize();
-        this.maxSizeBytes = properties.getStorage().getMaxSizeBytes();
+        this.maxSizeBytes = storage.getMaxSizeBytes();
+    }
+
+    /**
+     * 确认当前使用本机存储。MinIO 只保留配置名，选中时拒绝启动。
+     *
+     * @param type 配置中的存储类型
+     */
+    private void requireLocalStorage(String type) {
+        if (type == null || type.isBlank()) {
+            throw new IllegalArgumentException("存储类型不能为空");
+        }
+        String normalized = type.trim().toLowerCase(Locale.ROOT);
+        if ("local".equals(normalized)) {
+            return;
+        }
+        if ("minio".equals(normalized)) {
+            throw new IllegalArgumentException("MinIO 还没实现，请继续使用 local");
+        }
+        throw new IllegalArgumentException("不支持的存储类型，请使用 local");
     }
 
     /**

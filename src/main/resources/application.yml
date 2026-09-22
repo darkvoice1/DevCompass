@@ -24,5 +24,6 @@ springdoc:
 devcompass:
   timezone: Asia/Shanghai
   storage:
+    type: local
     local-dir: data/attachments
     max-size-bytes: 10485760

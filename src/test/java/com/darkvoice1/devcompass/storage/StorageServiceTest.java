@@ -195,6 +195,51 @@ class StorageServiceTest {
                 .hasMessage("文件大小上限必须大于0");
     }
 
+    /**
+     * 验证默认和显式的 local 都可以保存文件。
+     */
+    @Test
+    void shouldUseLocalStorageByDefault() {
+        DevCompassProperties defaults = new DevCompassProperties();
+        assertThat(defaults.getStorage().getType()).isEqualTo("local");
+
+        DevCompassProperties properties = new DevCompassProperties();
+        properties.getStorage().setType(" LOCAL ");
+        properties.getStorage().setLocalDir(tempDir.toString());
+        properties.getStorage().setMaxSizeBytes(8);
+        StorageService localStorage = new StorageService(properties);
+
+        StoredFile stored = localStorage.save("记录.md", new byte[] {9});
+        assertThat(localStorage.load(stored.getStorageKey())).containsExactly(9);
+    }
+
+    /**
+     * 验证选择 MinIO 或其他未知类型时会立刻失败。
+     */
+    @Test
+    void shouldRejectMinioUntilItIsImplemented() {
+        DevCompassProperties minio = new DevCompassProperties();
+        minio.getStorage().setType("minio");
+        minio.getStorage().setLocalDir(tempDir.toString());
+        assertThatThrownBy(() -> new StorageService(minio))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("MinIO 还没实现，请继续使用 local");
+
+        DevCompassProperties blankType = new DevCompassProperties();
+        blankType.getStorage().setType("  ");
+        blankType.getStorage().setLocalDir(tempDir.toString());
+        assertThatThrownBy(() -> new StorageService(blankType))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("存储类型不能为空");
+
+        DevCompassProperties unknown = new DevCompassProperties();
+        unknown.getStorage().setType("s3");
+        unknown.getStorage().setLocalDir(tempDir.toString());
+        assertThatThrownBy(() -> new StorageService(unknown))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("不支持的存储类型，请使用 local");
+    }
+
     private StorageService newStorage(long maxSizeBytes) {
         DevCompassProperties properties = new DevCompassProperties();
         properties.getStorage().setLocalDir(tempDir.toString());

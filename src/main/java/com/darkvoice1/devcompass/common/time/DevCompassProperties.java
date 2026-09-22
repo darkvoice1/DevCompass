@@ -40,6 +40,11 @@ public class DevCompassProperties {
     public static class Storage {
 
         /**
+         * 存储类型。当前只实现 local。
+         */
+        private String type = "local";
+
+        /**
          * 附件保存目录。相对路径相对于应用运行目录。
          */
         private String localDir = "data/attachments";
@@ -48,6 +53,14 @@ public class DevCompassProperties {
          * 单个文件最大字节数，默认 10MB。
          */
         private long maxSizeBytes = 10L * 1024 * 1024;
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
 
         public String getLocalDir() {
             return localDir;
