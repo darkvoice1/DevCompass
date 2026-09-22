@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.darkvoice1.devcompass.attachment.dto.AttachmentContent;
 import com.darkvoice1.devcompass.attachment.dto.AttachmentResponse;
 import com.darkvoice1.devcompass.attachment.entity.Attachment;
 import com.darkvoice1.devcompass.attachment.repository.AttachmentMapper;
@@ -19,7 +20,7 @@ import com.darkvoice1.devcompass.storage.dto.StoredFile;
 import com.darkvoice1.devcompass.storage.service.StorageService;
 
 /**
- * 处理项目附件的上传和列表。
+ * 处理项目附件的上传、列表、下载和删除。
  */
 @Service
 public class AttachmentService {
@@ -90,7 +91,39 @@ public class AttachmentService {
     }
 
     /**
-     * 查询项目。已删除项目查不到，已归档项目仍然可以上传和查看附件。
+     * 下载项目中的一个附件。响应由控制器写成文件，不包在统一 JSON 里。
+     *
+     * @param projectId 项目主键
+     * @param attachmentId 附件主键
+     * @return 文件名、类型和内容
+     */
+    public AttachmentContent downloadAttachment(Long projectId, Long attachmentId) {
+        findProjectOrThrow(projectId);
+        Attachment attachment = findAttachmentOrThrow(projectId, attachmentId);
+        byte[] content = storageService.load(attachment.getStorageKey());
+        return new AttachmentContent(
+                attachment.getOriginalFileName(), attachment.getContentType(), content);
+    }
+
+    /**
+     * 删除项目中的一个附件。数据库标成已删除，并删掉磁盘文件。
+     *
+     * @param projectId 项目主键
+     * @param attachmentId 附件主键
+     */
+    @Transactional
+    public void deleteAttachment(Long projectId, Long attachmentId) {
+        findProjectOrThrow(projectId);
+        Attachment attachment = findAttachmentOrThrow(projectId, attachmentId);
+        // 文件已经不在磁盘上时，存储服务不会报错，记录仍然要标成已删除。
+        storageService.delete(attachment.getStorageKey());
+        if (attachmentMapper.deleteById(attachment.getId()) == 0) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "附件不存在");
+        }
+    }
+
+    /**
+     * 查询项目。已删除项目查不到，已归档项目仍然可以管理附件。
      *
      * @param projectId 项目主键
      */
@@ -99,6 +132,21 @@ public class AttachmentService {
         if (project == null) {
             throw new BusinessException(ErrorCode.BUSINESS_ERROR, "项目不存在");
         }
+    }
+
+    /**
+     * 查询属于该项目的未删除附件。其他项目的编号也当作不存在。
+     *
+     * @param projectId 项目主键
+     * @param attachmentId 附件主键
+     * @return 附件实体
+     */
+    private Attachment findAttachmentOrThrow(Long projectId, Long attachmentId) {
+        Attachment attachment = attachmentMapper.selectById(attachmentId);
+        if (attachment == null || !projectId.equals(attachment.getProjectId())) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "附件不存在");
+        }
+        return attachment;
     }
 
     /**

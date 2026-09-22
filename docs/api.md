@@ -109,3 +109,15 @@ GET /api/v1/projects/{projectId}/attachments
 ```
 
 返回该项目未删除的附件，新上传的在前。已归档项目仍可上传和查看。项目不存在或已删除时拒绝。单个文件默认不超过 10MB。
+
+```text
+GET /api/v1/projects/{projectId}/attachments/{attachmentId}/content
+```
+
+响应体是文件本身，浏览器按原文件名下载。附件不属于该项目时当作不存在。
+
+```text
+DELETE /api/v1/projects/{projectId}/attachments/{attachmentId}
+```
+
+成功时 `data` 为 `null`。记录标成已删除，并删掉磁盘文件。删除后不能再下载，这一版不能恢复。

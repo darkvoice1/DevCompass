@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -20,6 +21,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.darkvoice1.devcompass.attachment.dto.AttachmentContent;
 import com.darkvoice1.devcompass.attachment.dto.AttachmentResponse;
 import com.darkvoice1.devcompass.attachment.entity.Attachment;
 import com.darkvoice1.devcompass.attachment.repository.AttachmentMapper;
@@ -32,7 +34,7 @@ import com.darkvoice1.devcompass.storage.dto.StoredFile;
 import com.darkvoice1.devcompass.storage.service.StorageService;
 
 /**
- * 验证项目附件上传和列表。
+ * 验证项目附件上传、列表、下载和删除。
  */
 class AttachmentServiceTest {
 
@@ -186,6 +188,86 @@ class AttachmentServiceTest {
         assertThatThrownBy(() -> attachmentService.listAttachments(9L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("项目不存在");
+    }
+
+    /**
+     * 验证可以下载属于该项目的附件内容。
+     */
+    @Test
+    void shouldDownloadAttachmentContent() {
+        when(projectMapper.selectById(8L)).thenReturn(project(false));
+        when(attachmentMapper.selectById(15L)).thenReturn(savedAttachment());
+        when(storageService.load("11111111-1111-1111-1111-111111111111")).thenReturn(new byte[] {1, 2, 3});
+
+        AttachmentContent content = attachmentService.downloadAttachment(8L, 15L);
+
+        assertThat(content.getOriginalFileName()).isEqualTo("设计图.png");
+        assertThat(content.getContentType()).isEqualTo("image/png");
+        assertThat(content.getContent()).containsExactly(1, 2, 3);
+    }
+
+    /**
+     * 验证其他项目的附件编号不能下载。
+     */
+    @Test
+    void shouldRejectDownloadWhenAttachmentBelongsToAnotherProject() {
+        when(projectMapper.selectById(8L)).thenReturn(project(false));
+        Attachment anotherProject = savedAttachment();
+        anotherProject.setProjectId(9L);
+        when(attachmentMapper.selectById(15L)).thenReturn(anotherProject);
+
+        assertThatThrownBy(() -> attachmentService.downloadAttachment(8L, 15L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("附件不存在");
+        verifyNoInteractions(storageService);
+    }
+
+    /**
+     * 验证附件不存在或项目不存在时不能下载。
+     */
+    @Test
+    void shouldRejectDownloadWhenAttachmentOrProjectIsMissing() {
+        when(projectMapper.selectById(8L)).thenReturn(project(false));
+        when(attachmentMapper.selectById(15L)).thenReturn(null);
+        assertThatThrownBy(() -> attachmentService.downloadAttachment(8L, 15L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("附件不存在");
+
+        when(projectMapper.selectById(9L)).thenReturn(null);
+        assertThatThrownBy(() -> attachmentService.downloadAttachment(9L, 15L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("项目不存在");
+    }
+
+    /**
+     * 验证删除时同时软删除记录和磁盘文件。
+     */
+    @Test
+    void shouldDeleteAttachmentAndStoredFile() {
+        when(projectMapper.selectById(8L)).thenReturn(project(true));
+        when(attachmentMapper.selectById(15L)).thenReturn(savedAttachment());
+        when(attachmentMapper.deleteById(15L)).thenReturn(1);
+
+        attachmentService.deleteAttachment(8L, 15L);
+
+        verify(storageService).delete("11111111-1111-1111-1111-111111111111");
+        verify(attachmentMapper).deleteById(15L);
+    }
+
+    /**
+     * 验证删文件失败时不把记录标成已删除。
+     */
+    @Test
+    void shouldKeepRecordWhenStoredFileCannotBeDeleted() {
+        when(projectMapper.selectById(8L)).thenReturn(project(false));
+        when(attachmentMapper.selectById(15L)).thenReturn(savedAttachment());
+        doThrow(new BusinessException(ErrorCode.INTERNAL_ERROR, "删除文件失败"))
+                .when(storageService).delete("11111111-1111-1111-1111-111111111111");
+
+        assertThatThrownBy(() -> attachmentService.deleteAttachment(8L, 15L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("删除文件失败");
+        verify(attachmentMapper, never()).deleteById(any(Long.class));
     }
 
     private Project project(boolean archived) {
