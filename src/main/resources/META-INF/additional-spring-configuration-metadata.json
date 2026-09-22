@@ -5,6 +5,18 @@
       "type": "java.lang.String",
       "description": "计算日期边界时使用的时区。",
       "defaultValue": "Asia/Shanghai"
+    },
+    {
+      "name": "devcompass.storage.local-dir",
+      "type": "java.lang.String",
+      "description": "本地附件保存目录。相对路径相对于应用运行目录。",
+      "defaultValue": "data/attachments"
+    },
+    {
+      "name": "devcompass.storage.max-size-bytes",
+      "type": "java.lang.Long",
+      "description": "单个附件允许的最大字节数，默认 10MB。",
+      "defaultValue": 10485760
     }
   ]
 }

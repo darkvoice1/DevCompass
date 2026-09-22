@@ -13,11 +13,56 @@ public class DevCompassProperties {
      */
     private String timezone = "Asia/Shanghai";
 
+    /**
+     * 附件文件保存位置和大小上限。
+     */
+    private Storage storage = new Storage();
+
     public String getTimezone() {
         return timezone;
     }
 
     public void setTimezone(String timezone) {
         this.timezone = timezone;
+    }
+
+    public Storage getStorage() {
+        return storage;
+    }
+
+    public void setStorage(Storage storage) {
+        this.storage = storage;
+    }
+
+    /**
+     * 附件存储配置，对应 devcompass.storage。
+     */
+    public static class Storage {
+
+        /**
+         * 附件保存目录。相对路径相对于应用运行目录。
+         */
+        private String localDir = "data/attachments";
+
+        /**
+         * 单个文件最大字节数，默认 10MB。
+         */
+        private long maxSizeBytes = 10L * 1024 * 1024;
+
+        public String getLocalDir() {
+            return localDir;
+        }
+
+        public void setLocalDir(String localDir) {
+            this.localDir = localDir;
+        }
+
+        public long getMaxSizeBytes() {
+            return maxSizeBytes;
+        }
+
+        public void setMaxSizeBytes(long maxSizeBytes) {
+            this.maxSizeBytes = maxSizeBytes;
+        }
     }
 }
