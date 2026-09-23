@@ -135,3 +135,14 @@ GET /api/v1/projects/{projectId}/tasks/export
 ```
 
 下载 `project-{projectId}-tasks.csv`，用 Excel 打开任务清单。列是标题、状态、所属阶段名称、优先级、截止日期、是否阻塞。阶段只写名称。项目不存在时拒绝。
+
+```text
+POST /api/v1/projects/import
+Content-Type: application/json
+```
+
+请求体就是上面导出的 JSON。`formatVersion` 必须是 `1`。同名项目已存在时整份拒绝，不覆盖旧数据。成功后数据库重新分配编号，阶段、任务、日志和动态会按文件里的旧编号重新连上。附件不导入，响应里的 `skippedAttachmentCount` 是跳过的附件数量。
+
+```json
+{"code":"0","message":"success","data":{"projectId":100,"projectName":"研发罗盘","skippedAttachmentCount":1}}
+```
