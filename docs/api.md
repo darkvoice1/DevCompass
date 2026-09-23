@@ -134,7 +134,7 @@ GET /api/v1/projects/{projectId}/export
 GET /api/v1/projects/{projectId}/tasks/export
 ```
 
-下载 `project-{projectId}-tasks.csv`，用 Excel 打开任务清单。列是标题、状态、所属阶段名称、优先级、截止日期、是否阻塞。阶段只写名称。项目不存在时拒绝。
+下载 `project-{projectId}-tasks.csv`，用 Excel 打开任务清单。列是标题、状态、所属阶段名称、优先级、截止日期、是否阻塞。阶段只写名称。项目不存在时拒绝。整库备份、恢复和附件文件夹的复制见 [backup.md](backup.md)。
 
 ```text
 POST /api/v1/projects/import
