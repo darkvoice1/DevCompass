@@ -1,5 +1,7 @@
 package com.darkvoice1.devcompass.importexport.controller;
 
+import java.nio.charset.StandardCharsets;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -12,7 +14,7 @@ import com.darkvoice1.devcompass.importexport.dto.ProjectExportFile;
 import com.darkvoice1.devcompass.importexport.service.ProjectExportService;
 
 /**
- * 提供项目 JSON 导出接口。
+ * 提供项目 JSON 和任务 CSV 导出接口。
  */
 @RestController
 @RequestMapping("/api/v1/projects")
@@ -43,5 +45,21 @@ public class ProjectExportController {
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"project-" + projectId + ".json\"")
                 .body(file);
+    }
+
+    /**
+     * 把一个项目的任务导出成 CSV 文件。
+     *
+     * @param projectId 项目主键
+     * @return CSV 文件
+     */
+    @GetMapping("/{projectId}/tasks/export")
+    public ResponseEntity<String> exportTasks(@PathVariable Long projectId) {
+        String csv = projectExportService.exportTasksCsv(projectId);
+        return ResponseEntity.ok()
+                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"project-" + projectId + "-tasks.csv\"")
+                .body(csv);
     }
 }

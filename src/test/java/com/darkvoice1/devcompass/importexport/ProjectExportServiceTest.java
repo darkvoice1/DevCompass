@@ -130,6 +130,44 @@ class ProjectExportServiceTest {
     }
 
     /**
+     * 验证任务 CSV 使用中文表头，并写出阶段名称。
+     */
+    @Test
+    void shouldExportTasksAsCsv() {
+        when(projectMapper.selectById(8L)).thenReturn(project());
+        when(projectPhaseMapper.selectList(any())).thenReturn(List.of(phase()));
+        Task quoted = task();
+        quoted.setId(16L);
+        quoted.setTitle("设计,评审");
+        quoted.setPhaseId(null);
+        quoted.setBlocked(true);
+        quoted.setStatus(TaskStatus.IN_PROGRESS);
+        quoted.setPriority(TaskPriority.HIGH);
+        quoted.setDueDate(null);
+        when(taskMapper.selectList(any())).thenReturn(List.of(task(), quoted));
+
+        String csv = projectExportService.exportTasksCsv(8L);
+
+        assertThat(csv).startsWith("\uFEFF标题,状态,所属阶段名称,优先级,截止日期,是否阻塞\r\n");
+        assertThat(csv).contains("导出项目,待办,开发实现,中,2026-09-30,否\r\n");
+        assertThat(csv).contains("\"设计,评审\",进行中,,高,,是\r\n");
+    }
+
+    /**
+     * 验证没有任务时 CSV 仍保留表头。
+     */
+    @Test
+    void shouldExportCsvHeaderWhenProjectHasNoTask() {
+        when(projectMapper.selectById(8L)).thenReturn(project());
+        when(projectPhaseMapper.selectList(any())).thenReturn(List.of());
+        when(taskMapper.selectList(any())).thenReturn(List.of());
+
+        String csv = projectExportService.exportTasksCsv(8L);
+
+        assertThat(csv).isEqualTo("\uFEFF标题,状态,所属阶段名称,优先级,截止日期,是否阻塞\r\n");
+    }
+
+    /**
      * 验证项目不存在时拒绝导出。
      */
     @Test
@@ -137,6 +175,9 @@ class ProjectExportServiceTest {
         when(projectMapper.selectById(8L)).thenReturn(null);
 
         assertThatThrownBy(() -> projectExportService.exportProject(8L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("项目不存在");
+        assertThatThrownBy(() -> projectExportService.exportTasksCsv(8L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("项目不存在");
         verify(taskMapper, never()).selectList(any());

@@ -1,7 +1,9 @@
 package com.darkvoice1.devcompass.importexport.service;
 
 import java.time.Clock;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
@@ -29,10 +31,12 @@ import com.darkvoice1.devcompass.worklog.entity.WorkLog;
 import com.darkvoice1.devcompass.worklog.repository.WorkLogMapper;
 
 /**
- * 把一个项目当前可见的资料导出成 JSON 文件内容。
+ * 把一个项目当前可见的资料导出成 JSON 或任务 CSV。
  */
 @Service
 public class ProjectExportService {
+
+    private static final String CSV_HEADER = "标题,状态,所属阶段名称,优先级,截止日期,是否阻塞";
 
     private final ProjectMapper projectMapper;
 
@@ -78,10 +82,7 @@ public class ProjectExportService {
      * @return 导出文件内容
      */
     public ProjectExportFile exportProject(Long projectId) {
-        Project project = projectMapper.selectById(projectId);
-        if (project == null) {
-            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "项目不存在");
-        }
+        Project project = requireProject(projectId);
         List<ProjectPhase> phases = findPhases(projectId);
         List<Task> tasks = findTasks(projectId);
         ProjectExportFile file = new ProjectExportFile();
@@ -94,6 +95,48 @@ public class ProjectExportService {
         file.setActivities(findActivities(projectId).stream().map(this::toActivityItem).toList());
         file.setAttachments(findAttachments(projectId).stream().map(this::toAttachmentItem).toList());
         return file;
+    }
+
+    /**
+     * 把项目中未删除的任务导出成 CSV。阶段只写名称。
+     *
+     * @param projectId 项目主键
+     * @return 带编码标记的 CSV 文本
+     */
+    public String exportTasksCsv(Long projectId) {
+        requireProject(projectId);
+        Map<Long, String> phaseNames = new HashMap<>();
+        for (ProjectPhase phase : findPhases(projectId)) {
+            phaseNames.put(phase.getId(), phase.getName());
+        }
+        StringBuilder csv = new StringBuilder();
+        csv.append('\uFEFF');
+        csv.append(CSV_HEADER).append("\r\n");
+        for (Task task : findTasks(projectId)) {
+            String phaseName = task.getPhaseId() == null ? "" : phaseNames.getOrDefault(task.getPhaseId(), "");
+            csv.append(csvField(task.getTitle())).append(',')
+                    .append(csvField(statusLabel(task))).append(',')
+                    .append(csvField(phaseName)).append(',')
+                    .append(csvField(priorityLabel(task))).append(',')
+                    .append(csvField(task.getDueDate() == null ? "" : task.getDueDate().toString())).append(',')
+                    .append(csvField(task.isBlocked() ? "是" : "否"))
+                    .append("\r\n");
+        }
+        return csv.toString();
+    }
+
+    /**
+     * 查询项目。已删除项目查不到，已归档项目仍然可以导出。
+     *
+     * @param projectId 项目主键
+     * @return 项目
+     */
+    private Project requireProject(Long projectId) {
+        Project project = projectMapper.selectById(projectId);
+        if (project == null) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "项目不存在");
+        }
+        return project;
     }
 
     /**
@@ -232,6 +275,60 @@ public class ProjectExportService {
         item.setSummary(activity.getSummary());
         item.setCreatedAt(activity.getCreatedAt());
         return item;
+    }
+
+    /**
+     * 把任务状态写成中文。
+     *
+     * @param task 任务
+     * @return 状态文字
+     */
+    private String statusLabel(Task task) {
+        if (task.getStatus() == null) {
+            return "";
+        }
+        return switch (task.getStatus()) {
+            case TODO -> "待办";
+            case IN_PROGRESS -> "进行中";
+            case COMPLETED -> "已完成";
+            case CANCELLED -> "已取消";
+        };
+    }
+
+    /**
+     * 把任务优先级写成中文。
+     *
+     * @param task 任务
+     * @return 优先级文字
+     */
+    private String priorityLabel(Task task) {
+        if (task.getPriority() == null) {
+            return "";
+        }
+        return switch (task.getPriority()) {
+            case LOW -> "低";
+            case MEDIUM -> "中";
+            case HIGH -> "高";
+            case URGENT -> "紧急";
+        };
+    }
+
+    /**
+     * 按 CSV 规则转义单元格。含逗号、引号或换行时用引号包起来。
+     *
+     * @param value 单元格原文
+     * @return 可以放进 CSV 的文本
+     */
+    private String csvField(String value) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        boolean mustQuote = value.indexOf(',') >= 0 || value.indexOf('"') >= 0
+                || value.indexOf('\n') >= 0 || value.indexOf('\r') >= 0;
+        if (!mustQuote) {
+            return value;
+        }
+        return "\"" + value.replace("\"", "\"\"") + "\"";
     }
 
     /**

@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 
@@ -26,7 +27,7 @@ import com.darkvoice1.devcompass.importexport.dto.ProjectExportFile;
 import com.darkvoice1.devcompass.importexport.service.ProjectExportService;
 
 /**
- * 验证项目 JSON 导出接口。
+ * 验证项目 JSON 和任务 CSV 导出接口。
  */
 class ProjectExportControllerTest {
 
@@ -79,6 +80,23 @@ class ProjectExportControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("BUSINESS_ERROR"))
                 .andExpect(jsonPath("$.message").value("项目不存在"));
+    }
+
+    /**
+     * 验证任务 CSV 以文件形式下载，并且中文表头保留。
+     */
+    @Test
+    void shouldDownloadTaskCsv() throws Exception {
+        when(projectExportService.exportTasksCsv(8L))
+                .thenReturn("\uFEFF标题,状态,所属阶段名称,优先级,截止日期,是否阻塞\r\n导出项目,待办,开发实现,中,2026-09-30,否\r\n");
+
+        mockMvc.perform(get("/api/v1/projects/8/tasks/export"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(new MediaType("text", "csv", StandardCharsets.UTF_8)))
+                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"project-8-tasks.csv\""))
+                .andExpect(content().string(
+                        "\uFEFF标题,状态,所属阶段名称,优先级,截止日期,是否阻塞\r\n导出项目,待办,开发实现,中,2026-09-30,否\r\n"));
     }
 
     private ProjectExportFile exportFile() {

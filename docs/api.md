@@ -129,3 +129,9 @@ GET /api/v1/projects/{projectId}/export
 ```
 
 下载一份 JSON 文件，文件名是 `project-{projectId}.json`。里面有 `formatVersion`、项目、阶段、任务、工作日志和动态。附件只含原文件名、类型和大小，不含文件内容，也不含磁盘路径。已删除的数据不导出。已归档项目可以导出。
+
+```text
+GET /api/v1/projects/{projectId}/tasks/export
+```
+
+下载 `project-{projectId}-tasks.csv`，用 Excel 打开任务清单。列是标题、状态、所属阶段名称、优先级、截止日期、是否阻塞。阶段只写名称。项目不存在时拒绝。
