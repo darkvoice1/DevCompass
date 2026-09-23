@@ -121,3 +121,11 @@ DELETE /api/v1/projects/{projectId}/attachments/{attachmentId}
 ```
 
 成功时 `data` 为 `null`。记录标成已删除，并删掉磁盘文件。删除后不能再下载，这一版不能恢复。允许的文件和存储位置见 [attachment.md](attachment.md)。
+
+## 项目导出
+
+```text
+GET /api/v1/projects/{projectId}/export
+```
+
+下载一份 JSON 文件，文件名是 `project-{projectId}.json`。里面有 `formatVersion`、项目、阶段、任务、工作日志和动态。附件只含原文件名、类型和大小，不含文件内容，也不含磁盘路径。已删除的数据不导出。已归档项目可以导出。

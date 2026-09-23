@@ -3,6 +3,7 @@ package com.darkvoice1.devcompass.common.exception;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -26,13 +27,22 @@ public class GlobalExceptionHandler {
     private final DevCompassProperties properties;
 
     /**
-     * 按应用配置创建异常处理器，上传大小提示与附件上限保持一致。
+     * 按应用配置创建异常处理器。切片测试没有这份配置时，使用默认上限。
      *
-     * @param properties 应用自定义配置
+     * @param propertiesProvider 应用自定义配置，可以不存在
      */
     @Autowired
+    public GlobalExceptionHandler(ObjectProvider<DevCompassProperties> propertiesProvider) {
+        this(propertiesProvider.getIfAvailable());
+    }
+
+    /**
+     * 按给定配置创建异常处理器。
+     *
+     * @param properties 应用自定义配置，为空时使用默认值
+     */
     public GlobalExceptionHandler(DevCompassProperties properties) {
-        this.properties = properties;
+        this.properties = properties == null ? new DevCompassProperties() : properties;
     }
 
     /**
