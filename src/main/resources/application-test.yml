@@ -7,3 +7,8 @@ spring:
     username: ${DB_USERNAME:devcompass}
     password: ${DB_PASSWORD:devcompass}
     driver-class-name: org.postgresql.Driver
+
+devcompass:
+  auth:
+    jwt-secret: ${JWT_SECRET:devcompass-test-jwt-secret-change-me-2026}
+    access-token-expiration: 15m

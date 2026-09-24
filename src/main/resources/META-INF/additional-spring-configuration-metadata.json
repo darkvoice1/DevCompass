@@ -33,6 +33,17 @@
       "name": "devcompass.auth.initial-password",
       "type": "java.lang.String",
       "description": "初始用户的原始密码，可通过 DEVCOMPASS_AUTH_INITIAL_PASSWORD 设置。"
+    },
+    {
+      "name": "devcompass.auth.jwt-secret",
+      "type": "java.lang.String",
+      "description": "JWT 的 HS256 签名密钥，生产环境必须通过 JWT_SECRET 设置且至少 32 字节。"
+    },
+    {
+      "name": "devcompass.auth.access-token-expiration",
+      "type": "java.time.Duration",
+      "description": "Access Token 有效期。",
+      "defaultValue": "15m"
     }
   ]
 }

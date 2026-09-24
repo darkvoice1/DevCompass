@@ -1,5 +1,7 @@
 package com.darkvoice1.devcompass.common.time;
 
+import java.time.Duration;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -107,6 +109,16 @@ public class DevCompassProperties {
          */
         private String initialPassword;
 
+        /**
+         * JWT 签名密钥，HS256 至少需要 32 字节。
+         */
+        private String jwtSecret;
+
+        /**
+         * Access Token 有效期，默认 15 分钟。
+         */
+        private Duration accessTokenExpiration = Duration.ofMinutes(15);
+
         public String getInitialUsername() {
             return initialUsername;
         }
@@ -121,6 +133,22 @@ public class DevCompassProperties {
 
         public void setInitialPassword(String initialPassword) {
             this.initialPassword = initialPassword;
+        }
+
+        public String getJwtSecret() {
+            return jwtSecret;
+        }
+
+        public void setJwtSecret(String jwtSecret) {
+            this.jwtSecret = jwtSecret;
+        }
+
+        public Duration getAccessTokenExpiration() {
+            return accessTokenExpiration;
+        }
+
+        public void setAccessTokenExpiration(Duration accessTokenExpiration) {
+            this.accessTokenExpiration = accessTokenExpiration;
         }
     }
 }

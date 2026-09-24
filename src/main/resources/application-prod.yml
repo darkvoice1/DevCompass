@@ -10,3 +10,8 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+
+devcompass:
+  auth:
+    jwt-secret: ${JWT_SECRET}
+    access-token-expiration: ${ACCESS_TOKEN_EXPIRATION:15m}
