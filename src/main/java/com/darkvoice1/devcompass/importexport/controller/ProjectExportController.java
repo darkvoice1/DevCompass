@@ -17,7 +17,7 @@ import com.darkvoice1.devcompass.importexport.service.ProjectExportService;
  * 提供项目 JSON 和任务 CSV 导出接口。
  */
 @RestController
-@RequestMapping("/api/v1/projects")
+@RequestMapping("/api/v1/projects/{projectId}")
 public class ProjectExportController {
 
     private final ProjectExportService projectExportService;
@@ -37,7 +37,7 @@ public class ProjectExportController {
      * @param projectId 项目主键
      * @return JSON 文件
      */
-    @GetMapping("/{projectId}/export")
+    @GetMapping("/export")
     public ResponseEntity<ProjectExportFile> exportProject(@PathVariable Long projectId) {
         ProjectExportFile file = projectExportService.exportProject(projectId);
         return ResponseEntity.ok()
@@ -53,7 +53,7 @@ public class ProjectExportController {
      * @param projectId 项目主键
      * @return CSV 文件
      */
-    @GetMapping("/{projectId}/tasks/export")
+    @GetMapping("/tasks/export")
     public ResponseEntity<String> exportTasks(@PathVariable Long projectId) {
         String csv = projectExportService.exportTasksCsv(projectId);
         return ResponseEntity.ok()

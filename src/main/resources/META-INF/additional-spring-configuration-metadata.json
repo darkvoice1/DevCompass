@@ -23,6 +23,16 @@
       "type": "java.lang.Long",
       "description": "单个附件允许的最大字节数，默认 10MB。",
       "defaultValue": 10485760
+    },
+    {
+      "name": "devcompass.auth.initial-username",
+      "type": "java.lang.String",
+      "description": "用户表为空时创建的初始用户名，可通过 DEVCOMPASS_AUTH_INITIAL_USERNAME 设置。"
+    },
+    {
+      "name": "devcompass.auth.initial-password",
+      "type": "java.lang.String",
+      "description": "初始用户的原始密码，可通过 DEVCOMPASS_AUTH_INITIAL_PASSWORD 设置。"
     }
   ]
 }

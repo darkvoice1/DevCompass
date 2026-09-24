@@ -18,6 +18,11 @@ public class DevCompassProperties {
      */
     private Storage storage = new Storage();
 
+    /**
+     * 认证与初始账号配置。
+     */
+    private Auth auth = new Auth();
+
     public String getTimezone() {
         return timezone;
     }
@@ -32,6 +37,14 @@ public class DevCompassProperties {
 
     public void setStorage(Storage storage) {
         this.storage = storage;
+    }
+
+    public Auth getAuth() {
+        return auth;
+    }
+
+    public void setAuth(Auth auth) {
+        this.auth = auth;
     }
 
     /**
@@ -76,6 +89,38 @@ public class DevCompassProperties {
 
         public void setMaxSizeBytes(long maxSizeBytes) {
             this.maxSizeBytes = maxSizeBytes;
+        }
+    }
+
+    /**
+     * 认证配置，对应 devcompass.auth。
+     */
+    public static class Auth {
+
+        /**
+         * 用户表为空时创建的初始用户名。
+         */
+        private String initialUsername;
+
+        /**
+         * 初始用户的原始密码，只从运行环境读取，不写入数据库。
+         */
+        private String initialPassword;
+
+        public String getInitialUsername() {
+            return initialUsername;
+        }
+
+        public void setInitialUsername(String initialUsername) {
+            this.initialUsername = initialUsername;
+        }
+
+        public String getInitialPassword() {
+            return initialPassword;
+        }
+
+        public void setInitialPassword(String initialPassword) {
+            this.initialPassword = initialPassword;
         }
     }
 }
