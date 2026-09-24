@@ -77,6 +77,19 @@ public class UserAccountService {
     }
 
     /**
+     * 按主键查询用户账号。
+     *
+     * @param userId 用户主键
+     * @return 用户账号，不存在时返回空
+     */
+    public UserAccount findById(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        return userAccountMapper.selectById(userId);
+    }
+
+    /**
      * 使用安全编码器核对原始密码。
      *
      * @param user 用户账号

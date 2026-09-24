@@ -21,12 +21,15 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserAccountService userAccountService;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
 
     public AuthService(AuthenticationManager authenticationManager,
-            UserAccountService userAccountService, JwtService jwtService) {
+            UserAccountService userAccountService, JwtService jwtService,
+            RefreshTokenService refreshTokenService) {
         this.authenticationManager = authenticationManager;
         this.userAccountService = userAccountService;
         this.jwtService = jwtService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     /**
@@ -50,6 +53,18 @@ public class AuthService {
             throw new BusinessException(
                     ErrorCode.INVALID_CREDENTIALS, ErrorCode.INVALID_CREDENTIALS.getMessage());
         }
-        return jwtService.issueAccessToken(user);
+        TokenResponse accessToken = jwtService.issueAccessToken(user);
+        return refreshTokenService.withRefreshToken(
+                accessToken, refreshTokenService.issue(user.getId()));
+    }
+
+    /**
+     * 轮换 Refresh Token 并签发一整套新令牌。
+     *
+     * @param refreshToken 原始 Refresh Token
+     * @return 新令牌结果
+     */
+    public TokenResponse refresh(String refreshToken) {
+        return refreshTokenService.rotate(refreshToken);
     }
 }

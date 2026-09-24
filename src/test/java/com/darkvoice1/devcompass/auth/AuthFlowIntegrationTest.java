@@ -1,5 +1,6 @@
 package com.darkvoice1.devcompass.auth;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -26,6 +27,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.EnabledIfDockerAvailable;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
 
 import com.darkvoice1.devcompass.Application;
 import com.darkvoice1.devcompass.auth.entity.UserAccount;
@@ -45,7 +47,8 @@ import tools.jackson.databind.ObjectMapper;
 class AuthFlowIntegrationTest {
 
     @Container
-    static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17-alpine");
+    static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer(
+            DockerImageName.parse("postgres:17-alpine"));
 
     @Autowired
     private MockMvc mockMvc;
@@ -73,6 +76,7 @@ class AuthFlowIntegrationTest {
         registry.add("devcompass.auth.jwt-secret",
                 () -> "devcompass-test-jwt-secret-change-me-2026");
         registry.add("devcompass.auth.access-token-expiration", () -> "15m");
+        registry.add("devcompass.auth.refresh-token-expiration", () -> "7d");
     }
 
     /**
@@ -103,6 +107,8 @@ class AuthFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
                 .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
                 .andExpect(jsonPath("$.data.expiresAt").isNotEmpty())
+                .andExpect(jsonPath("$.data.refreshToken").isNotEmpty())
+                .andExpect(jsonPath("$.data.refreshExpiresAt").isNotEmpty())
                 .andReturn().getResponse().getContentAsString();
         JsonNode response = objectMapper.readTree(responseBody);
         String accessToken = response.path("data").path("accessToken").asString();
@@ -114,6 +120,61 @@ class AuthFlowIntegrationTest {
                 .andExpect(jsonPath("$.code").value("0"))
                 .andExpect(jsonPath("$.data.id").value(user.getId()))
                 .andExpect(jsonPath("$.data.username").value("login-user"));
+    }
+
+    /**
+     * 验证刷新后旧 Refresh Token 立即失效，新 Token 可以继续使用。
+     */
+    @Test
+    void shouldRotateRefreshTokenAndRejectOldTokenReuse() throws Exception {
+        JsonNode loginResponse = login();
+        String oldRefreshToken = loginResponse.path("data").path("refreshToken").asString();
+
+        String refreshBody = mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                java.util.Map.of("refreshToken", oldRefreshToken))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("0"))
+                .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.data.refreshToken").isNotEmpty())
+                .andReturn().getResponse().getContentAsString();
+        String newRefreshToken = objectMapper.readTree(refreshBody)
+                .path("data").path("refreshToken").asString();
+        assertThat(newRefreshToken).isNotEqualTo(oldRefreshToken);
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                java.util.Map.of("refreshToken", oldRefreshToken))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                java.util.Map.of("refreshToken", newRefreshToken))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.refreshToken").isNotEmpty());
+    }
+
+    /**
+     * 验证空白和伪造 Refresh Token 返回明确错误。
+     */
+    @Test
+    void shouldRejectBlankAndForgedRefreshToken() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.data.refreshToken").value("Refresh Token 不能为空"));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"forged-refresh-token\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"));
     }
 
     /**
@@ -182,5 +243,19 @@ class AuthFlowIntegrationTest {
         mockMvc.perform(get("/api/v1/health"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("UP"));
+    }
+
+    private JsonNode login() throws Exception {
+        String responseBody = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "login-user",
+                                  "password": "安全密码123"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(responseBody);
     }
 }

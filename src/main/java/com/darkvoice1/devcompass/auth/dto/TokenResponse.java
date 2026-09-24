@@ -3,7 +3,7 @@ package com.darkvoice1.devcompass.auth.dto;
 import java.time.Instant;
 
 /**
- * Access Token 签发结果。
+ * Access Token 和 Refresh Token 签发结果。
  */
 public class TokenResponse {
 
@@ -13,10 +13,21 @@ public class TokenResponse {
 
     private Instant expiresAt;
 
+    private String refreshToken;
+
+    private Instant refreshExpiresAt;
+
     public TokenResponse(String accessToken, String tokenType, Instant expiresAt) {
         this.accessToken = accessToken;
         this.tokenType = tokenType;
         this.expiresAt = expiresAt;
+    }
+
+    public TokenResponse(String accessToken, String tokenType, Instant expiresAt,
+            String refreshToken, Instant refreshExpiresAt) {
+        this(accessToken, tokenType, expiresAt);
+        this.refreshToken = refreshToken;
+        this.refreshExpiresAt = refreshExpiresAt;
     }
 
     public String getAccessToken() {
@@ -41,5 +52,21 @@ public class TokenResponse {
 
     public void setExpiresAt(Instant expiresAt) {
         this.expiresAt = expiresAt;
+    }
+
+    public String getRefreshToken() {
+        return refreshToken;
+    }
+
+    public void setRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
+    }
+
+    public Instant getRefreshExpiresAt() {
+        return refreshExpiresAt;
+    }
+
+    public void setRefreshExpiresAt(Instant refreshExpiresAt) {
+        this.refreshExpiresAt = refreshExpiresAt;
     }
 }

@@ -12,3 +12,4 @@ devcompass:
   auth:
     jwt-secret: ${JWT_SECRET:devcompass-test-jwt-secret-change-me-2026}
     access-token-expiration: 15m
+    refresh-token-expiration: 7d

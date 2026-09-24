@@ -44,6 +44,12 @@
       "type": "java.time.Duration",
       "description": "Access Token 有效期。",
       "defaultValue": "15m"
+    },
+    {
+      "name": "devcompass.auth.refresh-token-expiration",
+      "type": "java.time.Duration",
+      "description": "Refresh Token 有效期。",
+      "defaultValue": "7d"
     }
   ]
 }

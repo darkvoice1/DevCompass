@@ -119,6 +119,11 @@ public class DevCompassProperties {
          */
         private Duration accessTokenExpiration = Duration.ofMinutes(15);
 
+        /**
+         * Refresh Token 有效期，默认 7 天。
+         */
+        private Duration refreshTokenExpiration = Duration.ofDays(7);
+
         public String getInitialUsername() {
             return initialUsername;
         }
@@ -149,6 +154,14 @@ public class DevCompassProperties {
 
         public void setAccessTokenExpiration(Duration accessTokenExpiration) {
             this.accessTokenExpiration = accessTokenExpiration;
+        }
+
+        public Duration getRefreshTokenExpiration() {
+            return refreshTokenExpiration;
+        }
+
+        public void setRefreshTokenExpiration(Duration refreshTokenExpiration) {
+            this.refreshTokenExpiration = refreshTokenExpiration;
         }
     }
 }

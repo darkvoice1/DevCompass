@@ -17,6 +17,10 @@ public enum ErrorCode {
     INVALID_ACCESS_TOKEN("INVALID_ACCESS_TOKEN", "Access Token 无效"),
     /** Access Token 已过期。 */
     ACCESS_TOKEN_EXPIRED("ACCESS_TOKEN_EXPIRED", "Access Token 已过期"),
+    /** Refresh Token 无效或已被使用。 */
+    INVALID_REFRESH_TOKEN("INVALID_REFRESH_TOKEN", "Refresh Token 无效"),
+    /** Refresh Token 已过期。 */
+    REFRESH_TOKEN_EXPIRED("REFRESH_TOKEN_EXPIRED", "Refresh Token 已过期"),
     /** 未知系统错误。 */
     INTERNAL_ERROR("INTERNAL_ERROR", "系统内部错误");
 

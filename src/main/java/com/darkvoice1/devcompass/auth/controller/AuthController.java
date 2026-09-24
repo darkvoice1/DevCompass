@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.darkvoice1.devcompass.auth.dto.CurrentUserResponse;
 import com.darkvoice1.devcompass.auth.dto.LoginRequest;
+import com.darkvoice1.devcompass.auth.dto.RefreshTokenRequest;
 import com.darkvoice1.devcompass.auth.dto.TokenResponse;
 import com.darkvoice1.devcompass.auth.service.AuthService;
 import com.darkvoice1.devcompass.common.web.ApiResponse;
@@ -38,6 +39,17 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.success(authService.login(request));
+    }
+
+    /**
+     * 使用 Refresh Token 轮换一整套新令牌。
+     *
+     * @param request 刷新令牌请求
+     * @return 新的 Access Token 和 Refresh Token
+     */
+    @PostMapping("/refresh")
+    public ApiResponse<TokenResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return ApiResponse.success(authService.refresh(request.getRefreshToken()));
     }
 
     /**
